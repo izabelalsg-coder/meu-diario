@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Meu Diário</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Caveat:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Lora',Georgia,serif;background:#F7F3EE;overflow:hidden;}
+textarea{font-family:inherit;}
+textarea::placeholder{color:rgba(196,120,90,0.28)!important;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#e0d4c8;border-radius:4px;}
+input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer;}
+.slide-up{animation:su .22s cubic-bezier(.4,0,.2,1);}
+@keyframes su{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+.spin{animation:spin 0.8s linear infinite;display:inline-block;}
+@media(max-width:767px){body{overflow:auto;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback,useMemo}=React;
+
+/* ================================================================
+   ⚙️  CONFIGURAÇÃO — substitua pelos valores do seu projeto Supabase
+   Settings → API → Project URL  e  anon public key
+   ================================================================ */
+const SUPABASE_URL  = "https://supabase.com/dashboard/project/mlznzzskyqagriojsxmw/settings/api";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
+/* ================================================================ */
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+/* ── CONSTANTES ─────────────────────────────────────────────────── */
+const FONTS=[
+  {label:"Playfair Display",value:"'Playfair Display',Georgia,serif"},
+  {label:"Lora",            value:"'Lora',Georgia,serif"},
+  {label:"Caveat",          value:"'Caveat',cursive"},
+  {label:"Cormorant",       value:"'Cormorant Garamond',Georgia,serif"},
+  {label:"DM Sans",         value:"'DM Sans',sans-serif"},
+];
+const BGS=[
+  {label:"Creme",   v:"#FAF7F0"},{label:"Rosê",    v:"#FFF0ED"},{label:"Menta",   v:"#EFF8F4"},
+  {label:"Céu",     v:"#EFF4FB"},{label:"Lavanda", v:"#F3EFF9"},{label:"Noite",   v:"#1C1C1E"},
+  {label:"Floresta",v:"#1A2416"},
+];
+const EMOJIS=["❤️","✨","🌸","🌿","🌙","☀️","🕊️","📖","🙏","💭","🌊","🦋","🍃","🌺","⭐","💫","🎵","🌹","🍂","❄️","🌈","💕","🔥","🌻","🫶","😊","😔","😌","🥹","💪","🎯","📝","💡","🌏","🏡","☕","🧘","🌷","🦜","🐚"];
+const MPT=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const DS=["D","S","T","Q","Q","S","S"];
+
+/* ── HELPERS ─────────────────────────────────────────────────────── */
+function toISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
+function pdi(iso){
+  const d=new Date(iso);
+  return{dn:d.getDate().toString().padStart(2,"0"),ms:MPT[d.getMonth()].slice(0,3).toLowerCase(),yr:d.getFullYear(),full:d.toLocaleDateString("pt-BR",{day:"numeric",month:"long",year:"numeric"}),iso:toISO(d)};
+}
+const dark=c=>c==="#1C1C1E"||c==="#1A2416";
+function dc(bg){return({
+  "#FAF7F0":"#7A604A","#FFF0ED":"#A85040","#EFF8F4":"#3A7055","#EFF4FB":"#3A5A90","#F3EFF9":"#584A90",
+  "#1C1C1E":"rgba(255,255,255,0.68)","#1A2416":"rgba(255,255,255,0.65)","#FFFFFF":"#000","#000000":"#fff",
+})[bg]||"#1a1410";}
+function useMob(){
+  const [m,sm]=useState(()=>window.innerWidth<768);
+  useEffect(()=>{const h=()=>sm(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
+  return m;
+}
+function emailName(email){return email?email.split("@")[0]:"";}
+
+/* ── SUPABASE: CAMADA DE DADOS ───────────────────────────────────── */
+function rowToEntry(r){
+  return{id:r.id,date:r.date,content:r.content,tags:r.tags||[],font:r.font,bg:r.bg,fontSize:r.font_size||17,createdAt:r.created_at};
+}
+function entryToRow(e,userId){
+  return{id:e.id,user_id:userId,date:e.date,content:e.content,tags:e.tags||[],font:e.font,bg:e.bg,font_size:e.fontSize||17,created_at:e.createdAt};
+}
+async function dbLoad(){
+  const{data,error}=await sb.from("diary_entries").select("*").order("date",{ascending:false});
+  if(error)throw error;
+  return(data||[]).map(rowToEntry);
+}
+async function dbSave(entry,userId){
+  const{error}=await sb.from("diary_entries").upsert(entryToRow(entry,userId));
+  if(error)throw error;
+}
+async function dbDelete(id){
+  const{error}=await sb.from("diary_entries").delete().eq("id",id);
+  if(error)throw error;
+}
+
+/* ── TELA DE CARREGAMENTO ────────────────────────────────────────── */
+function Loading(){
+  return(
+    <div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(150deg,#FAF7F0 0%,#F0E4D4 100%)",gap:"16px"}}>
+      <div style={{fontSize:"40px"}} className="spin">🌿</div>
+      <p style={{fontFamily:"'Playfair Display',serif",fontSize:"16px",color:"#b5a898",fontStyle:"italic"}}>Carregando seu diário…</p>
+    </div>
+  );
+}
+
+/* ── LOGIN ───────────────────────────────────────────────────────── */
+function Login({onAuth}){
+  const [mode,sm]=useState("login");
+  const [email,se]=useState("");const [pass,sp]=useState("");const [msg,smsg]=useState("");const [busy,sb2]=useState(false);
+  const go=async()=>{
+    if(!email.trim()||!pass){smsg("Preencha todos os campos.");return;}
+    if(pass.length<6){smsg("A senha deve ter ao menos 6 caracteres.");return;}
+    sb2(true);smsg("");
+    const err=await onAuth(mode,email.trim().toLowerCase(),pass);
+    sb2(false);if(err)smsg(err);
+  };
+  const inp={width:"100%",padding:"13px 16px",border:"1.5px solid #EAE0D8",borderRadius:"14px",fontSize:"15px",fontFamily:"'Lora',serif",color:"#1a1410",background:"#FDFAF7",outline:"none"};
+  return(
+    <div style={{minHeight:"100vh",background:"linear-gradient(150deg,#FAF7F0 0%,#F0E4D4 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+      <div style={{background:"white",borderRadius:"28px",padding:"48px 40px",width:"100%",maxWidth:"380px",boxShadow:"0 12px 60px rgba(140,100,60,0.13)"}}>
+        <div style={{textAlign:"center",marginBottom:"36px"}}>
+          <div style={{fontSize:"40px",marginBottom:"12px"}}>🌿</div>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"30px",fontWeight:700,color:"#1a1410",marginBottom:"6px",letterSpacing:"-0.5px"}}>Meu Diário</h1>
+          <p style={{color:"#b5a898",fontSize:"14px",fontStyle:"italic"}}>{mode==="login"?"Bem-vinda de volta":"Crie sua conta privada"}</p>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
+          <input type="email" placeholder="E-mail" value={email} onChange={e=>{se(e.target.value);smsg("");}} onKeyDown={e=>e.key==="Enter"&&go()} style={inp} autoComplete="email"/>
+          <input type="password" placeholder="Senha (mín. 6 caracteres)" value={pass} onChange={e=>{sp(e.target.value);smsg("");}} onKeyDown={e=>e.key==="Enter"&&go()} style={inp} autoComplete={mode==="login"?"current-password":"new-password"}/>
+          {msg&&<p style={{color:"#C4785A",fontSize:"13px",textAlign:"center",lineHeight:1.5}}>{msg}</p>}
+          <button onClick={go} disabled={busy} style={{width:"100%",padding:"14px",background:busy?"#d4a090":"#C4785A",color:"white",border:"none",borderRadius:"14px",fontSize:"15px",fontFamily:"'Playfair Display',serif",cursor:busy?"default":"pointer",transition:"background .2s"}}>
+            {busy?<span className="spin">⏳</span>:mode==="login"?"Entrar":"Criar conta"}
+          </button>
+        </div>
+        <p style={{textAlign:"center",marginTop:"20px",fontSize:"13px",color:"#b5a898"}}>
+          {mode==="login"?"Não tem conta? ":"Já tem conta? "}
+          <span onClick={()=>{sm(mode==="login"?"register":"login");smsg("");}} style={{color:"#C4785A",cursor:"pointer",textDecoration:"underline"}}>{mode==="login"?"Crie aqui":"Entrar"}</span>
+        </p>
+        {mode==="login"&&(
+          <p style={{textAlign:"center",marginTop:"8px",fontSize:"12px"}}>
+            <span onClick={async()=>{if(!email.trim()){smsg("Digite seu e-mail primeiro.");return;}sb2(true);const{error}=await sb.auth.resetPasswordForEmail(email.trim());sb2(false);smsg(error?"Erro ao enviar. Verifique o e-mail.":"E-mail de redefinição enviado!");}} style={{color:"#b5a898",cursor:"pointer",textDecoration:"underline"}}>Esqueceu a senha?</span>
+          </p>
+        )}
+        <p style={{textAlign:"center",marginTop:"14px",fontSize:"11px",color:"#d5c8b8"}}>Sincronizado entre todos os seus dispositivos.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── CALENDÁRIO ──────────────────────────────────────────────────── */
+function Cal({entries,sel,onSel}){
+  const [view,sv]=useState(new Date());
+  const yr=view.getFullYear(),mo=view.getMonth();
+  const first=new Date(yr,mo,1).getDay(),total=new Date(yr,mo+1,0).getDate();
+  const today=new Date();
+  const dates=useMemo(()=>new Set(entries.map(e=>{const d=new Date(e.date);return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;})),[entries]);
+  const cells=[...Array(first).fill(null),...Array.from({length:total},(_,i)=>i+1)];
+  const isSel=d=>d&&sel&&d===sel.getDate()&&mo===sel.getMonth()&&yr===sel.getFullYear();
+  const isT=d=>d===today.getDate()&&mo===today.getMonth()&&yr===today.getFullYear();
+  const has=d=>d&&dates.has(`${yr}-${mo}-${d}`);
+  const nb={background:"none",border:"none",cursor:"pointer",fontSize:"18px",color:"#C4785A",padding:"0 6px",lineHeight:1};
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}>
+        <button onClick={()=>sv(new Date(yr,mo-1,1))} style={nb}>‹</button>
+        <span style={{fontFamily:"'Playfair Display',serif",fontSize:"13px",color:"#3a2e26",fontWeight:600}}>{MPT[mo].slice(0,3)} {yr}</span>
+        <button onClick={()=>sv(new Date(yr,mo+1,1))} style={nb}>›</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"3px"}}>
+        {DS.map((w,i)=><div key={i} style={{textAlign:"center",fontSize:"9px",color:"#c5b8a8",fontWeight:700,padding:"3px 0"}}>{w}</div>)}
+        {cells.map((d,i)=>(
+          <div key={i} onClick={()=>d&&onSel(new Date(yr,mo,d))}
+            style={{position:"relative",textAlign:"center",padding:"5px 2px",borderRadius:"7px",fontSize:"11px",cursor:d?"pointer":"default",
+              background:isSel(d)?"#C4785A":isT(d)?"#F5EDE0":"transparent",
+              color:isSel(d)?"white":isT(d)?"#C4785A":"#3a2e26",
+              fontWeight:(isSel(d)||isT(d))?700:400}}>
+            {d||""}
+            {d&&has(d)&&!isSel(d)&&<span style={{position:"absolute",bottom:"2px",left:"50%",transform:"translateX(-50%)",width:"3px",height:"3px",borderRadius:"50%",background:"#C4785A",display:"block"}}/>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── CARD COMPACTO ───────────────────────────────────────────────── */
+function EntryCard({entry,active,onClick}){
+  const {dn,ms,yr}=pdi(entry.date);
+  const dk=dark(entry.bg||"#FAF7F0");
+  const tc=dk?"rgba(255,255,255,0.88)":"#1a1410";
+  const d=dk?"rgba(255,255,255,0.35)":"#a89888";
+  return(
+    <div onClick={onClick} style={{background:entry.bg||"#FAF7F0",borderRadius:"14px",padding:"13px 13px 11px",cursor:"pointer",marginBottom:"8px",border:`2px solid ${active?"#C4785A":"transparent"}`,transition:"border-color .15s,transform .1s"}}
+      onMouseEnter={e=>{if(!active)e.currentTarget.style.transform="translateY(-1px)";}}
+      onMouseLeave={e=>{e.currentTarget.style.transform="";}}>
+      <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:"12px",color:tc,marginBottom:"8px",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{entry.content}</p>
+      {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"8px"}}>{entry.tags.slice(0,3).map(t=><span key={t} style={{fontSize:"10px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"4px",padding:"1px 5px"}}>#{t}</span>)}</div>}
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:"4px"}}>
+        <span style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",fontWeight:700,color:tc,lineHeight:1}}>{dn}</span>
+        <div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{ms}.</div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{yr}</div></div>
+      </div>
+    </div>
+  );
+}
+
+/* ── VIEWER ──────────────────────────────────────────────────────── */
+function Viewer({entry,viewRef,onEdit,onDel,onPng,onBack,mob,saving}){
+  const {dn,ms,yr,full}=pdi(entry.date);
+  const dk=dark(entry.bg||"#FAF7F0");
+  const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";
+  const d=dc(entry.bg||"#FAF7F0");
+  const [conf,sc]=useState(false);
+  const vb={background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"};
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 20px",borderBottom:"1px solid #EDE5DC",flexShrink:0,flexWrap:"wrap",gap:"8px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
+          {mob&&<button onClick={onBack} style={{...vb,background:"none",color:"#C4785A",fontWeight:700,padding:"7px 2px"}}>←</button>}
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:"13px",color:"#b5a898",fontStyle:"italic"}}>{full}</span>
+          {saving&&<span style={{fontSize:"11px",color:"#b5a898"}} className="spin">⏳</span>}
+        </div>
+        <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+          <button onClick={onPng} style={vb}>⬇ PNG</button>
+          <button onClick={onEdit} style={vb}>✏ Editar</button>
+          {!conf?<button onClick={()=>sc(true)} style={{...vb,color:"#C06060"}}>🗑</button>
+            :<><button onClick={()=>{onDel();sc(false);}} style={{...vb,background:"#C06060",color:"white"}}>Excluir</button>
+               <button onClick={()=>sc(false)} style={vb}>✕</button></>}
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:mob?"16px":"28px"}}>
+        <div ref={viewRef} style={{background:entry.bg||"#FAF7F0",borderRadius:"24px",padding:mob?"36px 28px 32px":"48px 44px 40px",display:"flex",flexDirection:"column",minHeight:"520px"}}>
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||17}px`,lineHeight:1.92,color:tc,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",textAlign:"center",width:"100%"}}>{entry.content}</p>
+          </div>
+          {(entry.tags||[]).length>0&&(
+            <div style={{display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"center",marginTop:"28px"}}>
+              {entry.tags.map(t=><span key={t} style={{fontSize:"11px",color:d,background:dk?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.05)",borderRadius:"6px",padding:"3px 9px"}}>#{t}</span>)}
+            </div>
+          )}
+          <div style={{display:"flex",alignItems:"baseline",gap:"7px",marginTop:"24px"}}>
+            <span style={{fontFamily:"'Playfair Display',serif",fontSize:"56px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
+            <div><div style={{fontSize:"12px",color:d,lineHeight:1.3}}>{ms}.</div><div style={{fontSize:"12px",color:d,lineHeight:1.3}}>{yr}</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── MODAL PDF ───────────────────────────────────────────────────── */
+async function e2c(entry){
+  const {dn,ms,yr}=pdi(entry.date);const dk=dark(entry.bg||"#FAF7F0");const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";const d=dc(entry.bg||"#FAF7F0");
+  const el=document.createElement("div");el.style.cssText=`position:fixed;left:-9999px;top:0;width:700px;background:${entry.bg||"#FAF7F0"};border-radius:28px;padding:64px 56px 52px;display:flex;flex-direction:column;min-height:800px;`;
+  const ctr=document.createElement("div");ctr.style.cssText="flex:1;display:flex;align-items:center;justify-content:center;";
+  const p=document.createElement("p");p.style.cssText=`font-family:${entry.font||"'Lora',Georgia,serif"};font-size:${entry.fontSize||17}px;line-height:1.92;color:${tc};margin:0;white-space:pre-wrap;word-break:break-word;text-align:center;width:100%;`;p.textContent=entry.content;ctr.appendChild(p);el.appendChild(ctr);
+  if((entry.tags||[]).length){const td=document.createElement("div");td.style.cssText="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:32px;";(entry.tags||[]).forEach(t=>{const s=document.createElement("span");s.style.cssText=`font-size:12px;color:${d};background:${dk?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.05)"};border-radius:8px;padding:4px 12px;`;s.textContent="#"+t;td.appendChild(s);});el.appendChild(td);}
+  const dd=document.createElement("div");dd.style.cssText="display:flex;align-items:baseline;gap:10px;margin-top:32px;";const ds=document.createElement("span");ds.style.cssText=`font-family:'Playfair Display',serif;font-size:64px;font-weight:700;color:${d};line-height:1;`;ds.textContent=dn;const dm=document.createElement("div");dm.innerHTML=`<div style="font-size:14px;color:${d};line-height:1.3;">${ms}.</div><div style="font-size:14px;color:${d};line-height:1.3;">${yr}</div>`;dd.appendChild(ds);dd.appendChild(dm);el.appendChild(dd);
+  document.body.appendChild(el);
+  try{return await window.html2canvas(el,{scale:2,useCORS:true,backgroundColor:null,logging:false});}finally{document.body.removeChild(el);}
+}
+function PdfModal({entries,onClose}){
+  const sorted=useMemo(()=>[...entries].sort((a,b)=>new Date(a.date)-new Date(b.date)),[entries]);
+  const minD=sorted.length?pdi(sorted[0].date).iso:"";const maxD=sorted.length?pdi(sorted[sorted.length-1].date).iso:"";
+  const [from,sf]=useState(minD);const [to,st]=useState(maxD);const [all,sa]=useState(true);const [busy,sbz]=useState(false);const [prog,sp]=useState(0);
+  const inp2={padding:"9px 12px",border:"1.5px solid #EAE0D8",borderRadius:"10px",fontSize:"13px",fontFamily:"'Lora',serif",color:"#1a1410",background:"#FDFAF7",outline:"none",width:"100%"};
+  const gen=async()=>{
+    const sel=all?sorted:sorted.filter(e=>{const iso=pdi(e.date).iso;return iso>=from&&iso<=to;});
+    if(!sel.length){alert("Nenhuma entrada no período.");return;}
+    sbz(true);sp(0);
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const pw=pdf.internal.pageSize.getWidth()-20;const ph=pdf.internal.pageSize.getHeight()-20;
+    for(let i=0;i<sel.length;i++){sp(Math.round((i/sel.length)*100));const canvas=await e2c(sel[i]);const ih=(canvas.height/canvas.width)*pw;if(i>0)pdf.addPage();pdf.addImage(canvas.toDataURL("image/png"),"PNG",10,10,pw,Math.min(ih,ph));}
+    sp(100);pdf.save(`meu-diario-${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.pdf`);sbz(false);onClose();
+  };
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.44)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"20px"}}>
+      <div className="slide-up" style={{background:"white",borderRadius:"24px",padding:"36px 30px",width:"100%",maxWidth:"420px",boxShadow:"0 16px 60px rgba(0,0,0,0.18)"}}>
+        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#1a1410",marginBottom:"6px"}}>Exportar PDF</h2>
+        <p style={{fontSize:"13px",color:"#b5a898",marginBottom:"24px",fontStyle:"italic"}}>Escolha o período e gere seu diário em PDF.</p>
+        <label style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"20px",cursor:"pointer"}} onClick={()=>sa(!all)}>
+          <div style={{width:"20px",height:"20px",borderRadius:"6px",border:`2px solid ${all?"#C4785A":"#EAE0D8"}`,background:all?"#C4785A":"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all .15s"}}>{all&&<span style={{color:"white",fontSize:"12px",lineHeight:1}}>✓</span>}</div>
+          <span style={{fontSize:"14px",color:"#3a2e26"}}>Todas as entradas ({sorted.length})</span>
+        </label>
+        {!all&&(
+          <div style={{display:"flex",flexDirection:"column",gap:"12px",marginBottom:"20px",padding:"16px",background:"#FAF7F0",borderRadius:"14px"}}>
+            <div><p style={{fontSize:"10px",color:"#b5a898",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"6px"}}>De</p><input type="date" value={from} onChange={e=>sf(e.target.value)} min={minD} max={to||maxD} style={inp2}/></div>
+            <div><p style={{fontSize:"10px",color:"#b5a898",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"6px"}}>Até</p><input type="date" value={to} onChange={e=>st(e.target.value)} min={from||minD} max={maxD} style={inp2}/></div>
+          </div>
+        )}
+        {busy&&(<div style={{marginBottom:"16px"}}><div style={{height:"4px",background:"#EDE5DC",borderRadius:"4px",overflow:"hidden"}}><div style={{height:"100%",background:"#C4785A",borderRadius:"4px",width:`${prog}%`,transition:"width .25s"}}/></div><p style={{fontSize:"11px",color:"#b5a898",marginTop:"6px",textAlign:"center"}}>Gerando… {prog}%</p></div>)}
+        <div style={{display:"flex",gap:"10px"}}>
+          <button onClick={onClose} disabled={busy} style={{flex:1,padding:"12px",background:"#F5EDE0",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>Cancelar</button>
+          <button onClick={gen} disabled={busy} style={{flex:2,padding:"12px",background:"#C4785A",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white"}}>{busy?"Gerando…":"📄 Exportar PDF"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── EDITOR ──────────────────────────────────────────────────────── */
+function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onSave,onCancel,mob,saving}){
+  const [ti,sti]=useState("");const [se2,sse2]=useState(false);const [sfn,ssfn]=useState(false);
+  const ta=useRef(null);const dk=dark(bg);const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";const d=dc(bg);const bar=dk?"rgba(0,0,0,0.55)":"rgba(255,255,255,0.95)";
+  const {full,iso,dn,ms,yr}=pdi(date.toISOString());
+  const ar=useCallback(el=>{if(!el)return;el.style.height="auto";el.style.height=el.scrollHeight+"px";},[]);
+  useEffect(()=>ar(ta.current),[content,fontSize,ar]);
+  const addTag=()=>{const t=ti.trim().replace(/^#/,"").toLowerCase();if(t&&!tags.includes(t))st([...tags,t]);sti("");};
+  const tb={background:dk?"rgba(255,255,255,0.1)":"#F5EDE0",border:"none",borderRadius:"9px",width:"38px",height:"38px",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px"};
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:bg,transition:"background .3s"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 18px",background:bar,backdropFilter:"blur(12px)",borderBottom:dk?"1px solid rgba(255,255,255,0.08)":"1px solid rgba(0,0,0,0.06)",flexShrink:0}}>
+        <button onClick={onCancel} style={{background:"none",border:"none",cursor:"pointer",fontSize:"14px",color:d,fontFamily:"'Lora',serif"}}>← Voltar</button>
+        <div style={{display:"flex",alignItems:"center",gap:"6px",flex:1,justifyContent:"center",overflow:"hidden"}}>
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:"12px",color:d,fontStyle:"italic",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{full}</span>
+          <label style={{cursor:"pointer",fontSize:"15px",flexShrink:0}} title="Alterar data">
+            <span>📅</span>
+            <input type="date" value={iso} onChange={e=>{if(e.target.value)sd(new Date(e.target.value+"T12:00:00"));}} style={{position:"absolute",opacity:0,width:"1px",height:"1px",pointerEvents:"none"}}/>
+          </label>
+        </div>
+        <button onClick={onSave} disabled={saving} style={{background:"none",border:"none",cursor:saving?"default":"pointer",fontSize:"14px",color:"#C4785A",fontWeight:700,fontFamily:"'Playfair Display',serif",letterSpacing:"0.5px",opacity:saving?0.5:1}}>
+          {saving?<span className="spin">⏳</span>:"SALVAR"}
+        </button>
+      </div>
+      <div style={{flex:1,overflow:"auto",padding:mob?"12px":"20px"}}>
+        <div ref={eRef} style={{background:bg,borderRadius:"20px",padding:mob?"32px 24px 24px":"36px 32px 28px",display:"flex",flexDirection:"column",minHeight:"calc(100vh - 210px)"}}>
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <textarea ref={ta} autoFocus value={content} onChange={e=>{sc(e.target.value);ar(e.target);}} placeholder="Escreva seu dia…"
+              style={{width:"100%",background:"transparent",border:"none",outline:"none",resize:"none",overflow:"hidden",fontFamily:font,fontSize:`${fontSize}px`,lineHeight:1.9,color:tc,textAlign:"center"}}/>
+          </div>
+          {tags.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"center",marginTop:"16px"}}>{tags.map(t=><span key={t} onClick={()=>st(tags.filter(x=>x!==t))} style={{fontSize:"11px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"6px",padding:"3px 8px",cursor:"pointer"}}>#{t} ×</span>)}</div>)}
+          <div style={{display:"flex",alignItems:"baseline",gap:"7px",marginTop:"24px"}}>
+            <span style={{fontFamily:"'Playfair Display',serif",fontSize:"56px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
+            <div><div style={{fontSize:"12px",color:d,lineHeight:1.3}}>{ms}.</div><div style={{fontSize:"12px",color:d,lineHeight:1.3}}>{yr}</div></div>
+          </div>
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:"7px",padding:"8px 12px",background:bar,backdropFilter:"blur(12px)",borderTop:dk?"1px solid rgba(255,255,255,0.08)":"1px solid rgba(0,0,0,0.06)",flexWrap:"wrap",flexShrink:0,position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:"4px",background:dk?"rgba(255,255,255,0.08)":"#F5EDE0",borderRadius:"9px",padding:"5px 8px"}}>
+          <span style={{color:"#C4785A",fontSize:"14px",fontWeight:700}}>#</span>
+          <input value={ti} onChange={e=>sti(e.target.value)} onKeyDown={e=>{if(["Enter"," ",","].includes(e.key)){e.preventDefault();addTag();}}} placeholder="tag" style={{background:"transparent",border:"none",outline:"none",width:"52px",fontSize:"12px",color:tc,fontFamily:"'Lora',serif"}}/>
+          <button onClick={addTag} style={{background:"none",border:"none",cursor:"pointer",color:"#C4785A",fontSize:"14px",lineHeight:1}}>+</button>
+        </div>
+        <div style={{position:"relative"}}>
+          <button onClick={()=>{sse2(!se2);ssfn(false);}} style={tb}>😊</button>
+          {se2&&(<div style={{position:"absolute",bottom:"46px",left:0,background:dk?"#2C2C2E":"white",borderRadius:"16px",padding:"10px",boxShadow:"0 8px 36px rgba(0,0,0,0.16)",display:"grid",gridTemplateColumns:"repeat(8,1fr)",gap:"3px",width:mob?"256px":"276px",zIndex:300}}>{EMOJIS.map((em,i)=><button key={i} onClick={()=>{sc(c=>c+em);sse2(false);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:"18px",padding:"3px",borderRadius:"6px",lineHeight:1}}>{em}</button>)}</div>)}
+        </div>
+        <div style={{position:"relative"}}>
+          <button onClick={()=>{ssfn(!sfn);sse2(false);}} style={tb}><span style={{fontFamily:"'Playfair Display',serif",fontSize:"14px",fontWeight:700,color:tc}}>Aa</span></button>
+          {sfn&&(<div style={{position:"absolute",bottom:"46px",left:0,background:dk?"#2C2C2E":"white",borderRadius:"14px",padding:"6px",boxShadow:"0 8px 36px rgba(0,0,0,0.16)",zIndex:300,minWidth:"185px"}}>{FONTS.map(f=><button key={f.value} onClick={()=>{sf(f.value);ssfn(false);}} style={{display:"block",width:"100%",padding:"8px 12px",textAlign:"left",background:font===f.value?"#FFF0E8":"none",border:"none",cursor:"pointer",fontFamily:f.value,fontSize:"14px",color:dk?"#eee":"#1a1410",borderRadius:"8px"}}>{f.label}</button>)}</div>)}
+        </div>
+        <div style={{display:"flex",gap:"4px",alignItems:"center"}}>{BGS.map(o=><button key={o.v} onClick={()=>sbg(o.v)} title={o.label} style={{width:"20px",height:"20px",borderRadius:"50%",background:o.v,padding:0,flexShrink:0,border:bg===o.v?"2.5px solid #C4785A":"1.5px solid rgba(0,0,0,0.12)",cursor:"pointer"}}/>)}</div>
+        <div style={{display:"flex",alignItems:"center",gap:"2px",background:dk?"rgba(255,255,255,0.08)":"#F5EDE0",borderRadius:"9px",padding:"4px 6px"}}>
+          <button onClick={()=>sfz(s=>Math.max(12,s-1))} style={{background:"none",border:"none",cursor:"pointer",color:"#C4785A",fontSize:"13px",lineHeight:1,padding:"0 2px",fontWeight:700}}>A-</button>
+          <span style={{fontSize:"10px",color:tc,minWidth:"24px",textAlign:"center"}}>{fontSize}px</span>
+          <button onClick={()=>sfz(s=>Math.min(36,s+1))} style={{background:"none",border:"none",cursor:"pointer",color:"#C4785A",fontSize:"13px",lineHeight:1,padding:"0 2px",fontWeight:700}}>A+</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── SIDEBAR / LISTA COMPARTILHADA ───────────────────────────────── */
+function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,mob,onEntryClick}){
+  const [tab,st]=useState("timeline");
+  const tags=[...new Set(entries.flatMap(e=>e.tags||[]))];
+  const fil=entries.filter(e=>!stag||(e.tags||[]).includes(stag)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const grp=fil.reduce((a,e)=>{const d=new Date(e.date);const k=`${MPT[d.getMonth()]} ${d.getFullYear()}`;(a[k]=a[k]||[]).push(e);return a;},{});
+  const ch=active=>({fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",userSelect:"none",background:active?"#C4785A":"#F5EDE0",color:active?"white":"#8a7d70"});
+
+  const header=(
+    <div style={{padding:mob?"18px 18px 12px":"22px 20px 16px",borderBottom:"1px solid #EDE5DC",flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:mob?"22px":"20px",color:"#1a1410",letterSpacing:"-0.3px"}}>Meu Diário</h1>
+          <p style={{fontSize:"11px",color:"#c5b8a8",marginTop:"2px",fontStyle:"italic"}}>{emailName(user?.email)}</p>
+        </div>
+        <div style={{display:"flex",gap:"8px"}}>
+          {mob&&<button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"10px",padding:"8px 11px",fontSize:"12px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>PDF</button>}
+          <button onClick={()=>open(null,new Date())} style={{background:"#C4785A",color:"white",border:"none",borderRadius:"11px",padding:mob?"9px 16px":"8px 14px",fontSize:mob?"13px":"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Nova</button>
+        </div>
+      </div>
+      {mob&&(
+        <div style={{display:"flex",gap:"8px",marginTop:"14px"}}>
+          {["timeline","calendar"].map(t=>(
+            <button key={t} onClick={()=>st(t)} style={{padding:"6px 14px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",fontWeight:tab===t?600:400,background:tab===t?"#C4785A":"#F5EDE0",color:tab===t?"white":"#8a7d70",transition:"all .15s"}}>
+              {t==="timeline"?"Linha do tempo":"Calendário"}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const calSection=(
+    <div style={{padding:mob?"0 0 16px":"14px 18px",borderBottom:mob?"none":"1px solid #EDE5DC"}}>
+      <Cal entries={entries} sel={selDate} onSel={date=>{setSel(date);const f=entries.find(e=>{const d=new Date(e.date);return d.getDate()===date.getDate()&&d.getMonth()===date.getMonth()&&d.getFullYear()===date.getFullYear();});if(f){setSE(f);if(onEntryClick)onEntryClick(f);}else setSE(null);}}/>
+    </div>
+  );
+
+  const tagSection=tags.length>0&&(
+    <div style={{padding:mob?"12px 0":"10px 18px",borderBottom:mob?"none":"1px solid #EDE5DC"}}>
+      <p style={{fontSize:"9px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"7px"}}>Filtrar por tag</p>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
+        <span onClick={()=>sstag("")} style={ch(!stag)}>Todos</span>
+        {tags.map(t=><span key={t} onClick={()=>sstag(stag===t?"":t)} style={ch(stag===t)}>#{t}</span>)}
+      </div>
+    </div>
+  );
+
+  const timeline=(
+    <div style={{flex:1,overflowY:"auto",padding:mob?"12px 0":"8px 12px"}}>
+      {Object.keys(grp).length===0?(
+        <div style={{textAlign:"center",padding:mob?"48px 0":"36px 0",color:"#d5c8b8"}}>
+          <div style={{fontSize:"36px",marginBottom:"8px"}}>🌿</div>
+          <p style={{fontSize:"13px"}}>Nenhuma entrada ainda.</p>
+          <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Comece escrevendo seu dia.</p>
+          {mob&&<button onClick={()=>open(null,new Date())} style={{marginTop:"16px",background:"#C4785A",color:"white",border:"none",borderRadius:"12px",padding:"10px 24px",fontSize:"13px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>Começar agora</button>}
+        </div>
+      ):Object.entries(grp).map(([m,es])=>(
+        <div key={m}>
+          <div style={{fontSize:"9px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",padding:mob?"12px 0 6px":"10px 4px 5px"}}>{m}</div>
+          {es.map(e=><EntryCard key={e.id} entry={e} active={selEntry?.id===e.id} onClick={()=>{setSE(e);if(onEntryClick)onEntryClick(e);}}/>)}
+        </div>
+      ))}
+    </div>
+  );
+
+  if(mob){
+    return(
+      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"white"}}>
+        {header}
+        <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
+          {tab==="calendar"?<>{calSection}{tagSection}{timeline}</>:<>{tagSection}{timeline}</>}
+        </div>
+        <div style={{borderTop:"1px solid #EDE5DC",padding:"10px 28px 14px",display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",flexShrink:0}}>
+          <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>🚪</span>Sair</button>
+          <button onClick={()=>open(null,new Date())} style={{background:"#C4785A",color:"white",border:"none",borderRadius:"50%",width:"54px",height:"54px",fontSize:"28px",cursor:"pointer",boxShadow:"0 4px 16px rgba(196,120,90,0.4)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"6px"}}>+</button>
+          <button onClick={showPdf} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button>
+        </div>
+      </div>
+    );
+  }
+
+  return(
+    <aside style={{width:"300px",minWidth:"300px",background:"white",borderRight:"1px solid #EDE5DC",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {header}
+      {calSection}
+      {tagSection}
+      {timeline}
+      <div style={{padding:"10px 18px",borderTop:"1px solid #EDE5DC",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair da conta</button>
+        <button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>📄 Exportar PDF</button>
+      </div>
+    </aside>
+  );
+}
+
+/* ── APP ─────────────────────────────────────────────────────────── */
+function App(){
+  const mob=useMob();
+  const [scr,setSCR]=useState("loading");   // loading | login | diary | editor
+  const [user,su]=useState(null);
+  const [entries,se]=useState([]);
+  const [selEntry,sse]=useState(null);
+  const [selDate,ssd]=useState(new Date());
+  const [stag,sst]=useState("");
+  const [ec,sec]=useState("");const [et,set]=useState([]);const [ef,sef]=useState(FONTS[0].value);
+  const [ebg,sebg]=useState(BGS[0].v);const [efz,sefz]=useState(17);const [edit,sedit]=useState(null);
+  const [pdfOpen,spdf]=useState(false);
+  const [mobEnt,sme]=useState(false);
+  const [saving,ssav]=useState(false);
+  const vRef=useRef(null);
+
+  /* Verificar sessão ao carregar */
+  useEffect(()=>{
+    sb.auth.getSession().then(async({data:{session}})=>{
+      if(session?.user){
+        su(session.user);
+        try{const ents=await dbLoad();se(ents);}catch(e){console.error(e);}
+        setSCR("diary");
+      }else{setSCR("login");}
+    });
+    const{data:{subscription}}=sb.auth.onAuthStateChange((_event,session)=>{
+      if(!session)setSCR("login");
+    });
+    return()=>subscription.unsubscribe();
+  },[]);
+
+  const auth=async(mode,email,pass)=>{
+    if(mode==="register"){
+      const{data,error}=await sb.auth.signUp({email,password:pass});
+      if(error)return error.message;
+      if(data.user&&!data.session)return"Confirme seu e-mail para ativar a conta.";
+      su(data.user);se([]);setSCR("diary");return null;
+    }else{
+      const{data,error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error)return"E-mail ou senha incorretos.";
+      su(data.user);
+      try{const ents=await dbLoad();se(ents);}catch(e){console.error(e);}
+      setSCR("diary");return null;
+    }
+  };
+
+  const openEd=(entry=null,date=new Date())=>{
+    if(entry){sedit(entry);sec(entry.content);set(entry.tags||[]);sef(entry.font||FONTS[0].value);sebg(entry.bg||BGS[0].v);sefz(entry.fontSize||17);ssd(new Date(entry.date));}
+    else{sedit(null);sec("");set([]);sef(FONTS[0].value);sebg(BGS[0].v);sefz(17);ssd(date);}
+    setSCR("editor");
+  };
+
+  const save=async()=>{
+    if(!ec.trim())return;
+    ssav(true);
+    const entry={id:edit?edit.id:Date.now().toString(),date:selDate.toISOString(),content:ec,tags:et,font:ef,bg:ebg,fontSize:efz,createdAt:edit?edit.createdAt:new Date().toISOString()};
+    try{
+      await dbSave(entry,user.id);
+      const ne=edit?entries.map(x=>x.id===entry.id?entry:x):[...entries,entry];
+      se(ne);sse(entry);if(mob)sme(true);setSCR("diary");
+    }catch(e){alert("Erro ao salvar: "+e.message);}
+    ssav(false);
+  };
+
+  const del=async(id)=>{
+    try{await dbDelete(id);const ne=entries.filter(e=>e.id!==id);se(ne);sse(null);sme(false);}
+    catch(e){alert("Erro ao excluir: "+e.message);}
+  };
+
+  const png=async()=>{
+    if(!vRef.current||!window.html2canvas){alert("Aguarde o carregamento.");return;}
+    try{const c=await window.html2canvas(vRef.current,{scale:2,useCORS:true,backgroundColor:null,logging:false});const a=document.createElement("a");a.download=`diario-${new Date(selEntry?.date||Date.now()).toLocaleDateString("pt-BR").replace(/\//g,"-")}.png`;a.href=c.toDataURL("image/png");a.click();}
+    catch{alert("Erro ao gerar imagem.");}
+  };
+
+  const logout=async()=>{await sb.auth.signOut();su(null);se([]);sse(null);setSCR("login");};
+
+  if(scr==="loading")return<Loading/>;
+  if(scr==="login") return<Login onAuth={auth}/>;
+  if(scr==="editor")return(
+    <Editor eRef={vRef} content={ec} sc={sec} tags={et} st={set} font={ef} sf={sef} bg={ebg} sbg={sebg} fontSize={efz} sfz={sefz}
+      date={selDate} sd={ssd} onSave={save} onCancel={()=>setSCR("diary")} mob={mob} saving={saving}/>
+  );
+
+  const sidebarProps={entries,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true)};
+
+  /* Mobile: viewer em tela cheia */
+  if(mob&&mobEnt&&selEntry)return(
+    <>
+      <div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
+        <Viewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
+      </div>
+      {pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}
+    </>
+  );
+
+  /* Mobile: lista */
+  if(mob)return(
+    <>
+      <Sidebar {...sidebarProps} mob={true} onEntryClick={()=>sme(true)}/>
+      {pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}
+    </>
+  );
+
+  /* Desktop */
+  return(
+    <>
+      <div style={{display:"flex",height:"100vh",fontFamily:"'Lora',Georgia,serif",background:"#F7F3EE"}}>
+        <Sidebar {...sidebarProps} mob={false}/>
+        <main style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          {selEntry?(
+            <Viewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry)} onDel={()=>del(selEntry.id)} onPng={png} mob={false} saving={saving}/>
+          ):(
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px"}}>
+              <div style={{fontSize:"56px"}}>📖</div>
+              <p style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#b5a898"}}>Selecione uma entrada</p>
+              <p style={{fontSize:"13px",color:"#d5c8b8"}}>ou comece uma nova</p>
+              <button onClick={()=>openEd(null,new Date())} style={{marginTop:"12px",background:"#C4785A",color:"white",border:"none",borderRadius:"14px",padding:"12px 28px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>Escrever hoje</button>
+            </div>
+          )}
+        </main>
+      </div>
+      {pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
