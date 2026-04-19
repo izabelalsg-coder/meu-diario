@@ -1,0 +1,24 @@
+{
+  "name": "Meu Diário",
+  "short_name": "Diário",
+  "description": "Diário pessoal privado com sincronização em nuvem",
+  "start_url": "/meu-diario/",
+  "scope": "/meu-diario/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF7F0",
+  "theme_color": "#C4785A",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f33f.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/svg/1f33f.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
