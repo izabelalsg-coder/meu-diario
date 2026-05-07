@@ -131,7 +131,18 @@ function compressImg(file,maxPx=700,quality=0.7){
 function r2e(r){return{id:r.id,date:r.date,content:r.content,tags:r.tags||[],font:r.font,bg:r.bg,fontSize:r.font_size||17,createdAt:r.created_at,type:r.type||"diary",stampPhoto:r.stamp_photo||null,stampStyle:r.stamp_style||"classic"};}
 function e2r(e,uid){return{id:e.id,user_id:uid,date:e.date,content:e.content,tags:e.tags||[],font:e.font,bg:e.bg,font_size:e.fontSize||17,created_at:e.createdAt,type:e.type||"diary",stamp_photo:e.stampPhoto||null,stamp_style:e.stampStyle||"classic"};}
 async function dbLoad(){const{data,error}=await sb.from("diary_entries").select("*").order("date",{ascending:false});if(error)throw error;return(data||[]).map(r2e);}
-async function dbSave(entry,uid){const{error}=await sb.from("diary_entries").upsert(e2r(entry,uid));if(error)throw error;}
+async function dbSave(entry,uid){
+  const row=e2r(entry,uid);
+  const{error}=await sb.from("diary_entries").upsert(row);
+  if(error){
+    // Fallback: se as colunas stamp_ ainda não existem, salva sem elas
+    if(error.message&&error.message.includes("stamp_")){
+      const{stamp_photo,stamp_style,...rowBase}=row;
+      const{error:e2}=await sb.from("diary_entries").upsert(rowBase);
+      if(e2)throw e2;
+    }else throw error;
+  }
+}
 async function dbDelete(id){const{error}=await sb.from("diary_entries").delete().eq("id",id);if(error)throw error;}
 
 /* ── GERAR CANVAS ────────────────────────────────────────────── */
