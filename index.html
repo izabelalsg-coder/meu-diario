@@ -196,7 +196,56 @@ async function exportInstagram(entry,fmt){
   }finally{document.body.removeChild(el);}
 }
 
-/* ── LOADING ────────────────────────────────────────────────── */
+/* ── DOWNLOAD SELO (Canvas 2D — borda perfurada real) ─────── */
+async function downloadStamp(photo,style,dateStr){
+  const st=STAMP_STYLES.find(s=>s.id===style)||STAMP_STYLES[0];
+  const{dn,ms,yr}=pdi(dateStr);
+  const W=640,PAD=34,PERF_R=12,PERF_SP=30;
+  const PHOTO_SZ=W-PAD*2;  // 572px de foto
+  const INFO_H=72,H=PAD+PHOTO_SZ+INFO_H;
+  const SCALE=2;  // saída @2x = 1280 × ~1424px
+  const cv=document.createElement("canvas");
+  cv.width=W*SCALE;cv.height=H*SCALE;
+  const ctx=cv.getContext("2d");ctx.scale(SCALE,SCALE);
+
+  // 1. Fundo
+  ctx.fillStyle=st.bg;ctx.fillRect(0,0,W,H);
+
+  // 2. Perforações (destination-out = recorte real)
+  ctx.globalCompositeOperation="destination-out";
+  ctx.fillStyle="#000";
+  const cut=(x,y)=>{ctx.beginPath();ctx.arc(x,y,PERF_R,0,Math.PI*2);ctx.fill();};
+  for(let x=PERF_SP*.6;x<=W+PERF_R;x+=PERF_SP){cut(x,0);cut(x,H);}
+  for(let y=PERF_SP*.6;y<=H+PERF_R;y+=PERF_SP){cut(0,y);cut(W,y);}
+  ctx.globalCompositeOperation="source-over";
+
+  // 3. Foto (centro-crop quadrado)
+  const img=new Image();img.src=photo;
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;});
+  let sx=0,sy=0,sw=img.width,sh=img.height;
+  if(img.width>img.height){sw=img.height;sx=(img.width-sw)/2;}
+  else if(img.height>img.width){sh=img.width;sy=(img.height-sh)/2;}
+  ctx.drawImage(img,sx,sy,sw,sh,PAD,PAD,PHOTO_SZ,PHOTO_SZ);
+
+  // 4. Barra de info
+  const iy=PAD+PHOTO_SZ;
+  ctx.fillStyle=st.ac;
+  ctx.globalAlpha=0.6;
+  ctx.font=`bold 13px 'Playfair Display',Georgia,serif`;
+  ctx.textAlign="left";ctx.fillText("DIÁRIO",PAD+5,iy+20);
+  ctx.globalAlpha=1;
+  ctx.font=`bold 30px 'Playfair Display',Georgia,serif`;
+  ctx.fillText(dn,PAD+5,iy+56);
+  ctx.globalAlpha=0.7;
+  ctx.font=`17px 'Lora',Georgia,serif`;
+  ctx.textAlign="right";ctx.fillText(`${ms} ${yr}`,W-PAD-5,iy+56);
+  ctx.globalAlpha=1;
+
+  // 5. Download
+  const a=document.createElement("a");
+  a.download=`selo-${dn}-${ms}-${yr}.png`;
+  a.href=cv.toDataURL("image/png");a.click();
+}
 function Loading(){
   return(<div style={{minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:"linear-gradient(150deg,#FAF7F0 0%,#F0E4D4 100%)",gap:"16px"}}><div style={{fontSize:"40px"}} className="spin">🌿</div><p style={{fontFamily:"'Playfair Display',serif",fontSize:"16px",color:"#b5a898",fontStyle:"italic"}}>Carregando…</p></div>);
 }
@@ -343,6 +392,7 @@ function Viewer({entry,viewRef,onEdit,onDel,onPng,onBack,mob,saving}){
         </div>
         <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
           <button onClick={onPng} style={vb}>⬇ PNG</button>
+          {entry.stampPhoto&&<button onClick={()=>downloadStamp(entry.stampPhoto,entry.stampStyle||"classic",entry.date)} style={{...vb,background:"#F0F4F0",color:"#2e5e38"}}>🎟 Selo</button>}
           <button onClick={onEdit} style={vb}>✏ Editar</button>
           {!conf?<button onClick={()=>sc(true)} style={{...vb,color:"#C06060"}}>🗑</button>
             :<><button onClick={()=>{onDel();sc(false);}} style={{...vb,background:"#C06060",color:"white"}}>Excluir</button><button onClick={()=>sc(false)} style={vb}>✕</button></>}
