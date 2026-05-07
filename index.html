@@ -74,6 +74,14 @@ const MPT=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto
 const DS=["D","S","T","Q","Q","S","S"];
 const LILAC="#C8B4E8";
 const TERRACOTTA="#C4785A";
+const STAMP_STYLES=[
+  {id:"classic",bg:"#f7f3ed",ac:"#7c5c1e",label:"Clássico"},
+  {id:"sepia",  bg:"#f0e6d3",ac:"#8b4513",label:"Sépia"  },
+  {id:"vivid",  bg:"#ffffff", ac:"#c62828",label:"Vivo"   },
+  {id:"noite",  bg:"#e8eaf6",ac:"#283593",label:"Noite"  },
+  {id:"rosa",   bg:"#fce4ec",ac:"#ad1457",label:"Rosa"   },
+  {id:"floresta",bg:"#e8f5e9",ac:"#1b5e20",label:"Floresta"},
+];
 
 /* ── HELPERS ──────────────────────────────────────────────────── */
 function toISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
@@ -103,10 +111,25 @@ function useMob(){
 }
 function emailName(e){return e?e.split("@")[0]:"";}
 function getRandomPastel(){return PASTEL_COLORS[Math.floor(Math.random()*PASTEL_COLORS.length)];}
+function compressImg(file,maxPx=700,quality=0.7){
+  return new Promise(res=>{
+    const img=new Image();const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      const ratio=Math.min(1,maxPx/Math.max(w,h));
+      w=Math.round(w*ratio);h=Math.round(h*ratio);
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",quality));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);res(null);};
+    img.src=url;
+  });
+}
 
 /* ── DB ────────────────────────────────────────────────────────── */
-function r2e(r){return{id:r.id,date:r.date,content:r.content,tags:r.tags||[],font:r.font,bg:r.bg,fontSize:r.font_size||17,createdAt:r.created_at,type:r.type||"diary"};}
-function e2r(e,uid){return{id:e.id,user_id:uid,date:e.date,content:e.content,tags:e.tags||[],font:e.font,bg:e.bg,font_size:e.fontSize||17,created_at:e.createdAt,type:e.type||"diary"};}
+function r2e(r){return{id:r.id,date:r.date,content:r.content,tags:r.tags||[],font:r.font,bg:r.bg,fontSize:r.font_size||17,createdAt:r.created_at,type:r.type||"diary",stampPhoto:r.stamp_photo||null,stampStyle:r.stamp_style||"classic"};}
+function e2r(e,uid){return{id:e.id,user_id:uid,date:e.date,content:e.content,tags:e.tags||[],font:e.font,bg:e.bg,font_size:e.fontSize||17,created_at:e.createdAt,type:e.type||"diary",stamp_photo:e.stampPhoto||null,stamp_style:e.stampStyle||"classic"};}
 async function dbLoad(){const{data,error}=await sb.from("diary_entries").select("*").order("date",{ascending:false});if(error)throw error;return(data||[]).map(r2e);}
 async function dbSave(entry,uid){const{error}=await sb.from("diary_entries").upsert(e2r(entry,uid));if(error)throw error;}
 async function dbDelete(id){const{error}=await sb.from("diary_entries").delete().eq("id",id);if(error)throw error;}
@@ -119,7 +142,16 @@ async function entryToCanvas(entry){
   el.style.cssText=`position:fixed;left:-9999px;top:0;width:700px;background:${entry.bg||"#FAF7F0"};border-radius:28px;padding:64px 56px 52px;display:flex;flex-direction:column;min-height:800px;`;
   const ctr=document.createElement("div");ctr.style.cssText="flex:1;display:flex;align-items:center;justify-content:center;";
   const p=document.createElement("p");p.style.cssText=`font-family:${entry.font||"'Lora',Georgia,serif"};font-size:${entry.fontSize||17}px;line-height:1.92;color:${tc};margin:0;white-space:pre-wrap;word-break:break-word;text-align:center;width:100%;`;p.textContent=entry.content;ctr.appendChild(p);el.appendChild(ctr);
-  if((entry.tags||[]).length){const td=document.createElement("div");td.style.cssText="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:32px;";(entry.tags||[]).forEach(t=>{const s=document.createElement("span");s.style.cssText=`font-size:12px;color:${d};background:rgba(0,0,0,0.05);border-radius:8px;padding:4px 12px;`;s.textContent="#"+t;td.appendChild(s);});el.appendChild(td);}
+  if(entry.stampPhoto&&entry.type!=="frase"){
+    const sst=STAMP_STYLES.find(s=>s.id===(entry.stampStyle||"classic"))||STAMP_STYLES[0];
+    const sc2=document.createElement("div");sc2.style.cssText="display:flex;justify-content:center;margin-top:32px;";
+    const sw=document.createElement("div");sw.style.cssText=`background:${sst.bg};border-radius:12px;padding:10px;box-shadow:0 6px 24px rgba(0,0,0,0.18);width:160px;border:2px dashed ${sst.ac}44;`;
+    const si=document.createElement("img");si.src=entry.stampPhoto;si.style.cssText="width:136px;height:136px;object-fit:cover;display:block;border-radius:6px;";
+    const sd2=document.createElement("div");sd2.style.cssText="padding:6px 4px 4px;";
+    sd2.innerHTML=`<div style="font-family:'Playfair Display',serif;font-size:7px;letter-spacing:1.5px;text-transform:uppercase;color:${sst.ac};opacity:0.65;line-height:1.3;">Diário</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;"><span style="font-family:'Playfair Display',serif;font-size:13px;font-weight:700;color:${sst.ac};">${dn}</span><span style="font-family:'Lora',serif;font-size:9px;color:${sst.ac};opacity:0.7;">${ms} ${yr}</span></div>`;
+    sw.appendChild(si);sw.appendChild(sd2);sc2.appendChild(sw);el.appendChild(sc2);
+  }
+  if((entry.tags||[]).length){const td=document.createElement("div");td.style.cssText="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:28px;";(entry.tags||[]).forEach(t=>{const s=document.createElement("span");s.style.cssText=`font-size:12px;color:${d};background:rgba(0,0,0,0.05);border-radius:8px;padding:4px 12px;`;s.textContent="#"+t;td.appendChild(s);});el.appendChild(td);}
   const dd=document.createElement("div");dd.style.cssText="display:flex;align-items:baseline;gap:10px;margin-top:32px;";const ds=document.createElement("span");ds.style.cssText=`font-family:'Playfair Display',serif;font-size:64px;font-weight:700;color:${d};line-height:1;`;ds.textContent=dn;const dm=document.createElement("div");dm.innerHTML=`<div style="font-size:14px;color:${d};line-height:1.3;">${ms}.</div><div style="font-size:14px;color:${d};line-height:1.3;">${yr}</div>`;dd.appendChild(ds);dd.appendChild(dm);el.appendChild(dd);
   document.body.appendChild(el);
   try{return await window.html2canvas(el,{scale:2,useCORS:true,backgroundColor:null,logging:false});}finally{document.body.removeChild(el);}
@@ -235,6 +267,35 @@ function Cal({entries,sel,onSel}){
   );
 }
 
+/* ── STAMP (foto em estilo selo) ────────────────────────────── */
+function StampInEntry({photo,style,dateStr,size=120}){
+  const st=STAMP_STYLES.find(s=>s.id===style)||STAMP_STYLES[0];
+  const{dn,ms,yr}=pdi(dateStr);
+  const r=6,sp=18;
+  const mask=[
+    `radial-gradient(circle at 50% 0%,transparent ${r-.5}px,#000 ${r}px) top/${sp}px ${r}px repeat-x`,
+    `radial-gradient(circle at 50% 100%,transparent ${r-.5}px,#000 ${r}px) bottom/${sp}px ${r}px repeat-x`,
+    `radial-gradient(circle at 0% 50%,transparent ${r-.5}px,#000 ${r}px) left/${r}px ${sp}px repeat-y`,
+    `radial-gradient(circle at 100% 50%,transparent ${r-.5}px,#000 ${r}px) right/${r}px ${sp}px repeat-y`,
+    `linear-gradient(#000,#000) center/calc(100% - ${r*2}px) calc(100% - ${r*2}px) no-repeat`,
+  ].join(",");
+  const pad=8;const photoSz=size-(pad*2);
+  return(
+    <div style={{display:"inline-block"}}>
+      <div style={{background:st.bg,width:size,WebkitMask:mask,mask,boxShadow:"0 5px 20px rgba(0,0,0,0.22),0 2px 6px rgba(0,0,0,0.12)",padding:`${pad}px ${pad}px 0`}}>
+        <img src={photo} alt="stamp" style={{width:photoSz,height:photoSz,objectFit:"cover",display:"block"}}/>
+        <div style={{padding:"5px 5px 7px"}}>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:6.5,letterSpacing:1.5,textTransform:"uppercase",color:st.ac,opacity:.65,lineHeight:1.3}}>Diário</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:1}}>
+            <span style={{fontFamily:"'Playfair Display',serif",fontSize:10,fontWeight:700,color:st.ac}}>{dn}</span>
+            <span style={{fontFamily:"'Lora',serif",fontSize:8,color:st.ac,opacity:.7}}>{ms} {yr}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── CARD DIÁRIO (sidebar) ──────────────────────────────────── */
 function EntryCard({entry,active,onClick}){
   const{dn,ms,yr}=pdi(entry.date);const dk=dark(entry.bg||"#FAF7F0");
@@ -244,9 +305,12 @@ function EntryCard({entry,active,onClick}){
       onMouseEnter={e=>{if(!active)e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";}}>
       <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:"12px",color:tc,marginBottom:"8px",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{entry.content}</p>
       {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"8px"}}>{entry.tags.slice(0,3).map(t=><span key={t} style={{fontSize:"10px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"4px",padding:"1px 5px"}}>#{t}</span>)}</div>}
-      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:"4px"}}>
-        <span style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",fontWeight:700,color:tc,lineHeight:1}}>{dn}</span>
-        <div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{ms}.</div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{yr}</div></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end"}}>
+        {entry.stampPhoto?<div style={{width:36,height:36,borderRadius:5,overflow:"hidden",flexShrink:0,opacity:.85,border:`1.5px solid ${dk?"rgba(255,255,255,0.2)":"rgba(0,0,0,0.08)"}`}}><img src={entry.stampPhoto} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/></div>:<div/>}
+        <div style={{display:"flex",alignItems:"baseline",gap:"4px"}}>
+          <span style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",fontWeight:700,color:tc,lineHeight:1}}>{dn}</span>
+          <div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{ms}.</div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{yr}</div></div>
+        </div>
       </div>
     </div>
   );
@@ -278,6 +342,7 @@ function Viewer({entry,viewRef,onEdit,onDel,onPng,onBack,mob,saving}){
           <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||17}px`,lineHeight:1.92,color:tc,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",textAlign:"center",width:"100%"}}>{entry.content}</p>
           </div>
+          {entry.stampPhoto&&(<div style={{display:"flex",justifyContent:"center",marginTop:"24px"}}><StampInEntry photo={entry.stampPhoto} style={entry.stampStyle||"classic"} dateStr={entry.date} size={130}/></div>)}
           {(entry.tags||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"center",marginTop:"28px"}}>{entry.tags.map(t=><span key={t} style={{fontSize:"11px",color:d,background:dk?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.05)",borderRadius:"6px",padding:"3px 9px"}}>#{t}</span>)}</div>)}
           <div style={{display:"flex",alignItems:"baseline",gap:"7px",marginTop:"24px"}}>
             <span style={{fontFamily:"'Playfair Display',serif",fontSize:"56px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
@@ -515,9 +580,9 @@ function PdfModal({entries,onClose}){
   );
 }
 /* ── EDITOR (diário e frases) ───────────────────────────────── */
-function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onSave,onCancel,mob,saving,isFrase}){
-  const[ti,sti]=useState("");const[se2,sse2]=useState(false);const[sfn,ssfn]=useState(false);
-  const ta=useRef(null);const dk=dark(bg);const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";const d=dc(bg);const bar=dk?"rgba(0,0,0,0.55)":"rgba(255,255,255,0.95)";
+function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onSave,onCancel,mob,saving,isFrase,stampPhoto,setStampPhoto,stampStyle,setStampStyle}){
+  const[ti,sti]=useState("");const[se2,sse2]=useState(false);const[sfn,ssfn]=useState(false);const[showSP,sSP]=useState(false);
+  const ta=useRef(null);const photoRef=useRef(null);const dk=dark(bg);const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";const d=dc(bg);const bar=dk?"rgba(0,0,0,0.55)":"rgba(255,255,255,0.95)";
   const{full,iso,dn,ms,yr}=pdi(date.toISOString());
   const ar=useCallback(el=>{if(!el)return;el.style.height="auto";el.style.height=el.scrollHeight+"px";},[]);
   useEffect(()=>ar(ta.current),[content,fontSize,ar]);
@@ -544,6 +609,7 @@ function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onS
             <textarea ref={ta} autoFocus value={content} onChange={e=>{sc(e.target.value);ar(e.target);}} placeholder={isFrase?"Digite sua frase…":"Escreva seu dia…"}
               style={{width:"100%",background:"transparent",border:"none",outline:"none",resize:"none",overflow:"hidden",fontFamily:font,fontSize:`${fontSize}px`,lineHeight:1.9,color:tc,textAlign:"center"}}/>
           </div>
+          {!isFrase&&stampPhoto&&(<div style={{display:"flex",justifyContent:"center",marginTop:"20px"}}><StampInEntry photo={stampPhoto} style={stampStyle} dateStr={date.toISOString()} size={110}/></div>)}
           {!isFrase&&tags.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"center",marginTop:"16px"}}>{tags.map(t=><span key={t} onClick={()=>st(tags.filter(x=>x!==t))} style={{fontSize:"11px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"6px",padding:"3px 8px",cursor:"pointer"}}>#{t} ×</span>)}</div>)}
           <div style={{display:"flex",alignItems:"baseline",gap:"7px",marginTop:"24px"}}>
             <span style={{fontFamily:"'Playfair Display',serif",fontSize:"56px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
@@ -552,6 +618,39 @@ function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onS
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:"7px",padding:"8px 12px",background:bar,backdropFilter:"blur(12px)",borderTop:dk?"1px solid rgba(255,255,255,0.08)":"1px solid rgba(0,0,0,0.06)",flexWrap:"wrap",flexShrink:0,position:"relative"}}>
+        {/* Painel stamp — aparece acima da toolbar */}
+        {!isFrase&&showSP&&(
+          <div style={{position:"absolute",bottom:"100%",left:0,right:0,background:bar,backdropFilter:"blur(16px)",borderTop:dk?"1px solid rgba(255,255,255,0.08)":"1px solid rgba(0,0,0,0.06)",padding:"14px 14px 10px",zIndex:200,animation:"su .2s ease"}}>
+            <div style={{display:"flex",alignItems:"center",gap:"10px",marginBottom:"12px"}}>
+              {stampPhoto?(
+                <div style={{display:"flex",alignItems:"center",gap:"10px",flex:1}}>
+                  <div style={{width:48,height:48,borderRadius:8,overflow:"hidden",flexShrink:0,border:`1.5px solid ${dk?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.1)"}`}}><img src={stampPhoto} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/></div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:"12px",color:tc,fontFamily:"'Lora',serif",marginBottom:"4px",fontStyle:"italic"}}>Foto adicionada</div>
+                    <button onClick={()=>photoRef.current.click()} style={{background:"none",border:`1px solid ${dk?"rgba(255,255,255,0.2)":"#EDE5DC"}`,borderRadius:"8px",padding:"4px 10px",fontSize:"11px",cursor:"pointer",color:d,fontFamily:"'Lora',serif"}}>Trocar</button>
+                  </div>
+                  <button onClick={()=>{setStampPhoto(null);sSP(false);}} title="Remover stamp" style={{background:dk?"rgba(255,255,255,0.08)":"#F5EDE0",border:"none",borderRadius:"8px",width:32,height:32,cursor:"pointer",fontSize:"14px",color:"#C06060",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✕</button>
+                </div>
+              ):(
+                <button onClick={()=>photoRef.current.click()} style={{flex:1,padding:"11px",background:dk?"rgba(255,255,255,0.08)":"#F5EDE0",border:`1.5px dashed ${dk?"rgba(255,255,255,0.2)":"#EDE5DC"}`,borderRadius:"12px",fontSize:"13px",cursor:"pointer",color:d,fontFamily:"'Playfair Display',serif",display:"flex",alignItems:"center",justifyContent:"center",gap:"6px"}}>📷 Escolher foto da galeria</button>
+              )}
+              <input ref={photoRef} type="file" accept="image/*" onChange={async e=>{const f=e.target.files[0];if(f){const b=await compressImg(f);if(b)setStampPhoto(b);}e.target.value="";}} style={{display:"none"}}/>
+            </div>
+            {/* Estilos de selo */}
+            <div style={{display:"flex",alignItems:"center",gap:"4px"}}>
+              <span style={{fontSize:"10px",color:dk?"rgba(255,255,255,0.4)":"#c5b8a8",fontFamily:"'Lora',serif",marginRight:"4px",flexShrink:0}}>Estilo</span>
+              {STAMP_STYLES.map(s=>(
+                <button key={s.id} onClick={()=>setStampStyle(s.id)} title={s.label} style={{width:28,height:28,borderRadius:7,background:`linear-gradient(135deg,${s.bg},${s.ac}55)`,border:`2.5px solid ${stampStyle===s.id?TERRACOTTA:"transparent"}`,cursor:"pointer",padding:0,flexShrink:0,transition:"border-color .15s"}}/>
+              ))}
+            </div>
+          </div>
+        )}
+        {!isFrase&&(<div style={{position:"relative"}}>
+          <button onClick={()=>{sSP(!showSP);sse2(false);ssfn(false);}} style={{...tb,position:"relative",background:stampPhoto?(dk?"rgba(196,120,90,0.3)":"#FFF0E8"):tb.background,border:stampPhoto?`1.5px solid ${TERRACOTTA}`:tb.border}}>
+            <span style={{fontSize:"16px",lineHeight:1}}>📷</span>
+            {stampPhoto&&<span style={{position:"absolute",top:2,right:2,width:7,height:7,borderRadius:"50%",background:TERRACOTTA,display:"block"}}/>}
+          </button>
+        </div>)}
         {!isFrase&&(<div style={{display:"flex",alignItems:"center",gap:"4px",background:dk?"rgba(255,255,255,0.08)":"#F5EDE0",borderRadius:"9px",padding:"5px 8px"}}>
           <span style={{color:TERRACOTTA,fontSize:"14px",fontWeight:700}}>#</span>
           <input value={ti} onChange={e=>sti(e.target.value)} onKeyDown={e=>{if(["Enter"," ",","].includes(e.key)){e.preventDefault();addTag();}}} placeholder="tag" style={{background:"transparent",border:"none",outline:"none",width:"52px",fontSize:"12px",color:tc,fontFamily:"'Lora',serif"}}/>
@@ -713,6 +812,8 @@ function App(){
   const[saving,ssav]=useState(false);
   const[section,setSec]=useState("diary");  // "diary" | "frases"
   const[isFrase,sIF]=useState(false);
+  const[eStampPhoto,sesp]=useState(null);
+  const[eStampStyle,sess]=useState("classic");
   const vRef=useRef(null);
 
   useEffect(()=>{
@@ -731,14 +832,14 @@ function App(){
 
   const openEd=(entry=null,date=new Date(),frase=false)=>{
     sIF(frase);
-    if(entry){sedit(entry);sec(entry.content);set(entry.tags||[]);sef(entry.font||FONTS[frase?1:0].value);sebg(entry.bg||(frase?getRandomPastel():BGS[0].v));sefz(entry.fontSize||(frase?15:17));ssd(new Date(entry.date));}
-    else{sedit(null);sec("");set([]);sef(FONTS[frase?1:0].value);sebg(frase?getRandomPastel():BGS[0].v);sefz(frase?15:17);ssd(date);}
+    if(entry){sedit(entry);sec(entry.content);set(entry.tags||[]);sef(entry.font||FONTS[frase?1:0].value);sebg(entry.bg||(frase?getRandomPastel():BGS[0].v));sefz(entry.fontSize||(frase?15:17));ssd(new Date(entry.date));sesp(frase?null:(entry.stampPhoto||null));sess(entry.stampStyle||"classic");}
+    else{sedit(null);sec("");set([]);sef(FONTS[frase?1:0].value);sebg(frase?getRandomPastel():BGS[0].v);sefz(frase?15:17);ssd(date);sesp(null);sess("classic");}
     setSCR("editor");
   };
 
   const saveEntry=async()=>{
     if(!ec.trim())return;ssav(true);
-    const entry={id:edit?edit.id:Date.now().toString(),date:selDate.toISOString(),content:ec,tags:et,font:ef,bg:ebg,fontSize:efz,createdAt:edit?edit.createdAt:new Date().toISOString(),type:isFrase?"frase":"diary"};
+    const entry={id:edit?edit.id:Date.now().toString(),date:selDate.toISOString(),content:ec,tags:et,font:ef,bg:ebg,fontSize:efz,createdAt:edit?edit.createdAt:new Date().toISOString(),type:isFrase?"frase":"diary",stampPhoto:isFrase?null:eStampPhoto,stampStyle:isFrase?null:eStampStyle};
     try{await dbSave(entry,user.id);const ne=edit?entries.map(x=>x.id===entry.id?entry:x):[...entries,entry];se(ne);sse(entry);if(mob)sme(true);setSCR("diary");}
     catch(e){alert("Erro ao salvar: "+e.message);}
     ssav(false);
@@ -766,7 +867,8 @@ function App(){
   if(scr==="login")return<Login onAuth={auth}/>;
   if(scr==="editor")return(
     <Editor eRef={vRef} content={ec} sc={sec} tags={et} st={set} font={ef} sf={sef} bg={ebg} sbg={sebg} fontSize={efz} sfz={sefz}
-      date={selDate} sd={ssd} onSave={saveEntry} onCancel={()=>setSCR("diary")} mob={mob} saving={saving} isFrase={isFrase}/>
+      date={selDate} sd={ssd} onSave={saveEntry} onCancel={()=>setSCR("diary")} mob={mob} saving={saving} isFrase={isFrase}
+      stampPhoto={eStampPhoto} setStampPhoto={sesp} stampStyle={eStampStyle} setStampStyle={sess}/>
   );
 
   const sbProps={entries,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),section,setSection:setSec};
