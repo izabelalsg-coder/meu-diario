@@ -353,7 +353,7 @@ function Viewer({entry,viewRef,onEdit,onDel,onPng,onBack,mob,saving}){
           <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
             <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||17}px`,lineHeight:1.92,color:tc,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word",textAlign:"center",width:"100%"}}>{entry.content}</p>
           </div>
-          {entry.stampPhoto&&(<div style={{display:"flex",justifyContent:"center",marginTop:"24px"}}><StampInEntry photo={entry.stampPhoto} style={entry.stampStyle||"classic"} dateStr={entry.date} size={130}/></div>)}
+          {entry.stampPhoto&&(<div style={{display:"flex",justifyContent:"center",marginTop:"24px"}}><StampInEntry photo={entry.stampPhoto} style={entry.stampStyle||"classic"} dateStr={entry.date} size={200}/></div>)}
           {(entry.tags||[]).length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"center",marginTop:"28px"}}>{entry.tags.map(t=><span key={t} style={{fontSize:"11px",color:d,background:dk?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.05)",borderRadius:"6px",padding:"3px 9px"}}>#{t}</span>)}</div>)}
           <div style={{display:"flex",alignItems:"baseline",gap:"7px",marginTop:"24px"}}>
             <span style={{fontFamily:"'Playfair Display',serif",fontSize:"56px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
@@ -620,7 +620,7 @@ function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onS
             <textarea ref={ta} autoFocus value={content} onChange={e=>{sc(e.target.value);ar(e.target);}} placeholder={isFrase?"Digite sua frase…":"Escreva seu dia…"}
               style={{width:"100%",background:"transparent",border:"none",outline:"none",resize:"none",overflow:"hidden",fontFamily:font,fontSize:`${fontSize}px`,lineHeight:1.9,color:tc,textAlign:"center"}}/>
           </div>
-          {!isFrase&&stampPhoto&&(<div style={{display:"flex",justifyContent:"center",marginTop:"20px"}}><StampInEntry photo={stampPhoto} style={stampStyle} dateStr={date.toISOString()} size={110}/></div>)}
+          {!isFrase&&stampPhoto&&(<div style={{display:"flex",justifyContent:"center",marginTop:"20px"}}><StampInEntry photo={stampPhoto} style={stampStyle} dateStr={date.toISOString()} size={180}/></div>)}
           {!isFrase&&tags.length>0&&(<div style={{display:"flex",gap:"6px",flexWrap:"wrap",justifyContent:"center",marginTop:"16px"}}>{tags.map(t=><span key={t} onClick={()=>st(tags.filter(x=>x!==t))} style={{fontSize:"11px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"6px",padding:"3px 8px",cursor:"pointer"}}>#{t} ×</span>)}</div>)}
           <div style={{display:"flex",alignItems:"baseline",gap:"7px",marginTop:"24px"}}>
             <span style={{fontFamily:"'Playfair Display',serif",fontSize:"56px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
