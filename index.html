@@ -37,7 +37,7 @@ const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 /* ── SUPABASE ── substitua se necessário ── */
 const SUPABASE_URL  = "https://mlznzzskyqagriojsxmw.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
+const SUPABASE_ANON = "SUA_ANON_KEY";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{persistSession:false,autoRefreshToken:false},
 });
@@ -105,7 +105,7 @@ function useMob(){
 function emailName(e){return e?e.split("@")[0]:"";}
 function getRandomPastel(){return PASTEL_COLORS[Math.floor(Math.random()*PASTEL_COLORS.length)];}
 function devoContent(entry){try{return JSON.parse(entry.content);}catch{return{};}}
-function devoPreview(entry){const d=devoContent(entry);return d.reflexao||d.texto||d.referencia||"";}
+function devoPreview(entry){const d=devoContent(entry);return d.gratidao||d.anotacoes||d.leitura||"";}
 
 /* ── DB ────────────────────────────────────────────────────────── */
 function r2e(r){return{id:r.id,date:r.date,content:r.content,tags:r.tags||[],font:r.font,bg:r.bg,fontSize:r.font_size||17,createdAt:r.created_at,type:r.type||"diary"};}
@@ -116,41 +116,68 @@ async function dbDelete(id){const{error}=await sb.from("diary_entries").delete()
 
 /* ── GERAR CANVAS ────────────────────────────────────────────── */
 async function devoToCanvas(entry){
-  const{dn,ms,yr}=pdi(entry.date);
-  const dc_=dc(entry.bg||"#FAF7F0");
-  const dk=dark(entry.bg||"#FAF7F0");
-  const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";
-  const sub=dk?"rgba(255,255,255,0.5)":"#8a7d70";
-  const d=devoContent(entry);
-  const W=700;
+  const{dn,ms,yr,full}=pdi(entry.date);
+  const cv=devoContent(entry);
+  const W=700,tc="#3a2e42",sub="#7a6a88";
+  const mkDiv=(css,children=[])=>{const d=document.createElement("div");d.style.cssText=css;children.forEach(c=>d.appendChild(c));return d;};
+  const mkP=(txt,css)=>{const p=document.createElement("p");p.style.cssText=css;p.textContent=txt||"";return p;};
+  const mkLabel=(txt,bg,color)=>{const p=document.createElement("div");p.style.cssText=`background:${bg};color:${color};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;padding:5px 16px;border-radius:20px;display:inline-block;margin-bottom:8px;font-family:'DM Sans',sans-serif;`;p.textContent=txt;return p;};
+  const mkBox=(border,minH,children)=>{const d=document.createElement("div");d.style.cssText=`border:2px solid ${border};border-radius:10px;padding:14px;min-height:${minH}px;display:flex;flex-direction:column;gap:8px;`;children.forEach(c=>d.appendChild(c));return d;};
+  const mkSection=(label,labelBg,labelColor,border,minH,content)=>{const s=document.createElement("div");s.style.cssText="display:flex;flex-direction:column;";s.appendChild(mkLabel(label,labelBg,labelColor));const box=mkBox(border,minH,[mkP(content,`font-family:'Lora',Georgia,serif;font-size:13px;color:${tc};line-height:1.7;margin:0;white-space:pre-wrap;word-break:break-word;`)]);s.appendChild(box);return s;};
+
   const el=document.createElement("div");
-  el.style.cssText=`position:fixed;left:-9999px;top:0;width:${W}px;background:${entry.bg||"#FAF7F0"};border-radius:28px;padding:52px 56px 56px;display:flex;flex-direction:column;min-height:860px;font-family:${entry.font||"'Lora',Georgia,serif"};`;
-  // top row: date + mood
-  const topRow=document.createElement("div");topRow.style.cssText="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:24px;";
-  const dateDiv=document.createElement("div");dateDiv.style.cssText="display:flex;align-items:baseline;gap:8px;";
-  const daySpan=document.createElement("span");daySpan.style.cssText=`font-family:'Playfair Display',serif;font-size:48px;font-weight:700;color:${dc_};line-height:1;`;daySpan.textContent=dn;
-  const mDiv=document.createElement("div");mDiv.innerHTML=`<div style="font-size:12px;color:${dc_};line-height:1.3;">${ms}.</div><div style="font-size:12px;color:${dc_};line-height:1.3;">${yr}</div>`;
-  dateDiv.appendChild(daySpan);dateDiv.appendChild(mDiv);
-  const moodSpan=document.createElement("span");moodSpan.style.cssText="font-size:32px;line-height:1;";moodSpan.textContent=d.mood||"";
-  topRow.appendChild(dateDiv);topRow.appendChild(moodSpan);el.appendChild(topRow);
-  // divider
-  const div1=document.createElement("hr");div1.style.cssText=`border:none;border-top:1px solid ${dk?"rgba(255,255,255,0.15)":"rgba(0,0,0,0.08)"};margin:0 0 20px;`;el.appendChild(div1);
-  // referencia
-  if(d.referencia){const r=document.createElement("p");r.style.cssText=`font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:${dc_};text-align:center;margin:0 0 12px;letter-spacing:0.5px;`;r.textContent=d.referencia;el.appendChild(r);}
-  // texto
-  if(d.texto){const t=document.createElement("p");t.style.cssText=`font-size:14px;color:${tc};font-style:italic;text-align:center;margin:0 0 20px;line-height:1.7;opacity:0.85;`;t.textContent=`"${d.texto}"`;el.appendChild(t);}
-  // divider
-  if(d.reflexao||d.aplicacao||d.oracao){const div2=document.createElement("hr");div2.style.cssText=`border:none;border-top:1px solid ${dk?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.07)"};margin:0 0 20px;`;el.appendChild(div2);}
-  // fields
-  [[d.reflexao,"Reflexão"],[d.aplicacao,"Aplicação"],[d.oracao,"Oração"]].forEach(([val,label])=>{
-    if(!val)return;
-    const sec=document.createElement("div");sec.style.cssText="margin-bottom:18px;";
-    const lbl=document.createElement("p");lbl.style.cssText=`font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${dc_};margin:0 0 5px;font-family:'Playfair Display',serif;`;lbl.textContent=label;
-    const txt=document.createElement("p");txt.style.cssText=`font-size:14px;color:${tc};line-height:1.75;margin:0;white-space:pre-wrap;word-break:break-word;`;txt.textContent=val;
-    sec.appendChild(lbl);sec.appendChild(txt);el.appendChild(sec);
+  el.style.cssText=`position:fixed;left:-9999px;top:0;width:${W}px;background:#F9F5FB;border-radius:0;padding:44px 44px 40px;display:flex;flex-direction:column;gap:16px;min-height:960px;`;
+
+  // Header: title + date + mood
+  const hdr=document.createElement("div");hdr.style.cssText="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;";
+  const titleSpan=document.createElement("span");titleSpan.style.cssText="font-family:'Dancing Script',cursive;font-size:42px;color:#9070B0;";titleSpan.textContent="Devocional";
+  const dateBox=document.createElement("div");dateBox.style.cssText="display:flex;align-items:center;gap:12px;";
+  const datePill=document.createElement("div");datePill.style.cssText=`background:#F0C8C0;border-radius:8px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:13px;color:${tc};font-weight:600;`;
+  datePill.textContent=`${dn} ${ms}. ${yr}`;
+  const moodSpan=document.createElement("span");moodSpan.style.cssText="font-size:28px;";moodSpan.textContent=cv.mood||"";
+  dateBox.appendChild(datePill);dateBox.appendChild(moodSpan);
+  hdr.appendChild(titleSpan);hdr.appendChild(dateBox);el.appendChild(hdr);
+
+  // Row 1: Gratidão + Oração
+  const row1=document.createElement("div");row1.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:14px;";
+  row1.appendChild(mkSection("Motivos de Gratidão","#D4B8F0","#5A3880","#BFA8DC",120,cv.gratidao||""));
+  row1.appendChild(mkSection("Pedidos de Oração","#B8D8F0","#2A5878","#90BCDC",120,cv.oracao_pedidos||""));
+  el.appendChild(row1);
+
+  // Row 2: Leitura + Lições
+  const row2=document.createElement("div");row2.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:14px;";
+
+  // Leitura
+  const leitSec=document.createElement("div");leitSec.style.cssText="display:flex;flex-direction:column;";
+  leitSec.appendChild(mkLabel("Leitura Bíblica","#F0B8D8","#882858"));
+  const leitBox=mkBox("#DC98BC",80,[]);
+  const leitInput=document.createElement("div");leitInput.style.cssText=`background:#C4D4ED;border-radius:8px;padding:10px 14px;font-family:'Lora',Georgia,serif;font-size:13px;color:${tc};min-height:36px;`;
+  leitInput.textContent=cv.leitura||"";leitBox.appendChild(leitInput);leitSec.appendChild(leitBox);
+  row2.appendChild(leitSec);
+
+  // Lições
+  const licSec=document.createElement("div");licSec.style.cssText="display:flex;flex-direction:column;";
+  licSec.appendChild(mkLabel("3 Lições que Aprendi","#B8E0D0","#1A6050"));
+  const licBox=mkBox("#90C0B0",80,[]);
+  [[cv.licao1||"","#C8B8E0"],[cv.licao2||"","#E8C8D8"],[cv.licao3||"","#F8C0B0"]].forEach(([val,bg])=>{
+    const d=document.createElement("div");d.style.cssText=`background:${bg};border-radius:8px;padding:8px 12px;font-family:'Lora',Georgia,serif;font-size:12px;color:${tc};min-height:28px;`;d.textContent=val;licBox.appendChild(d);
   });
+  licSec.appendChild(licBox);
+  row2.appendChild(licSec);
+  el.appendChild(row2);
+
+  // Anotações
+  const anotSec=document.createElement("div");anotSec.style.cssText="display:flex;flex-direction:column;";
+  anotSec.appendChild(mkLabel("Minhas Anotações","#F0C8C0","#883830"));
+  const anotBox=mkBox("#E89898",140,[mkP(cv.anotacoes||"",`font-family:'Lora',Georgia,serif;font-size:13px;color:${tc};line-height:1.7;margin:0;white-space:pre-wrap;word-break:break-word;`)]);
+  anotSec.appendChild(anotBox);el.appendChild(anotSec);
+
+  // Footer
+  const footer=mkP("@IZABELALGONCALVES",`font-size:10px;color:${sub};text-align:center;letter-spacing:1px;font-family:'DM Sans',sans-serif;margin-top:8px;`);
+  el.appendChild(footer);
+
   document.body.appendChild(el);
-  try{return await window.html2canvas(el,{scale:2,useCORS:true,backgroundColor:null,logging:false});}finally{document.body.removeChild(el);}
+  try{return await window.html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#F9F5FB",logging:false});}finally{document.body.removeChild(el);}
 }
 
 async function entryToCanvas(entry){
@@ -633,23 +660,20 @@ function Editor({eRef,content,sc,tags,st,font,sf,bg,sbg,fontSize,sfz,date,sd,onS
 /* ── DEVOCIONAL: CARD COMPACTO ──────────────────────────────── */
 function DevoCard({entry,active,onClick}){
   const{dn,ms,yr}=pdi(entry.date);
-  const dk=dark(entry.bg||"#FAF7F0");
-  const tc=dk?"rgba(255,255,255,0.88)":"#1a1410";
-  const d=dc(entry.bg||"#FAF7F0");
   const cv=devoContent(entry);
   const preview=devoPreview(entry);
   return(
-    <div onClick={onClick} style={{background:entry.bg||"#FAF7F0",borderRadius:"14px",padding:"13px 13px 11px",cursor:"pointer",marginBottom:"8px",border:`2px solid ${active?TERRACOTTA:"transparent"}`,transition:"border-color .15s,transform .1s"}}
+    <div onClick={onClick} style={{background:"#F9F5FB",borderRadius:"14px",padding:"12px 14px",cursor:"pointer",marginBottom:"8px",border:`2px solid ${active?TERRACOTTA:"#D4B8F0"}`,transition:"border-color .15s,transform .1s"}}
       onMouseEnter={e=>{if(!active)e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"6px"}}>
-        <div style={{display:"flex",alignItems:"baseline",gap:"3px"}}>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:"16px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
-          <span style={{fontSize:"9px",color:d}}>{ms}.</span>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px"}}>
+        <span style={{fontFamily:"'Dancing Script',cursive",fontSize:"15px",color:"#9070B0"}}>Devocional</span>
+        <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+          <span style={{fontSize:"11px",color:"#8a7d70"}}>{dn} {ms}. {yr}</span>
+          {cv.mood&&<span style={{fontSize:"13px"}}>{cv.mood}</span>}
         </div>
-        {cv.mood&&<span style={{fontSize:"14px"}}>{cv.mood}</span>}
       </div>
-      {cv.referencia&&<p style={{fontSize:"10px",color:d,fontWeight:600,marginBottom:"4px",fontFamily:"'Playfair Display',serif"}}>{cv.referencia}</p>}
-      {preview&&<p style={{fontFamily:entry.font||"'Lora',serif",fontSize:"11px",color:tc,lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden",opacity:0.85}}>{preview}</p>}
+      {cv.leitura&&<p style={{fontSize:"10px",color:"#882858",fontWeight:600,marginBottom:"3px",fontFamily:"'DM Sans',sans-serif",textTransform:"uppercase",letterSpacing:"0.5px"}}>{cv.leitura}</p>}
+      {preview&&<p style={{fontSize:"11px",color:"#3a2e42",lineHeight:1.5,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden",fontFamily:"'Lora',serif"}}>{preview}</p>}
     </div>
   );
 }
@@ -657,58 +681,218 @@ function DevoCard({entry,active,onClick}){
 /* ── DEVOCIONAL: VIEWER ─────────────────────────────────────── */
 function DevoViewer({entry,viewRef,onEdit,onDel,onBack,mob,saving}){
   const{dn,ms,yr,full}=pdi(entry.date);
-  const dk=dark(entry.bg||"#FAF7F0");
-  const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";
-  const d=dc(entry.bg||"#FAF7F0");
-  const sub=dk?"rgba(255,255,255,0.5)":"#8a7d70";
-  const divClr=dk?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.07)";
   const cv=devoContent(entry);
+  const tc="#3a2e42",sub="#7a6a88";
   const[conf,sc]=useState(false);
   const vb={background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"};
-  const FieldBlock=({label,value,italic})=>value?(
-    <div style={{marginBottom:"18px"}}>
-      <p style={{fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:d,margin:"0 0 5px",fontFamily:"'Playfair Display',serif"}}>{label}</p>
-      <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||15}px`,lineHeight:1.75,color:tc,margin:0,whiteSpace:"pre-wrap",fontStyle:italic?"italic":"normal"}}>{value}</p>
-    </div>
+
+  const Label=({txt,bg,color})=>(
+    <div style={{background:bg,color,fontSize:"10px",fontWeight:700,textTransform:"uppercase",letterSpacing:"1.2px",padding:"4px 14px",borderRadius:"20px",display:"inline-block",marginBottom:"8px",fontFamily:"'DM Sans',sans-serif"}}>{txt}</div>
+  );
+  const Box=({border,children,minH=80})=>(
+    <div style={{border:`2px solid ${border}`,borderRadius:"10px",padding:"12px",minHeight:`${minH}px`,display:"flex",flexDirection:"column",gap:"8px"}}>{children}</div>
+  );
+  const TextField=({value})=>value?(
+    <p style={{fontFamily:"'Lora',serif",fontSize:"14px",color:tc,lineHeight:1.75,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{value}</p>
   ):null;
+
   return(
     <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+      {/* toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 20px",borderBottom:"1px solid #EDE5DC",flexShrink:0,flexWrap:"wrap",gap:"8px"}}>
         <div style={{display:"flex",alignItems:"center",gap:"8px"}}>
           {mob&&<button onClick={onBack} style={{...vb,background:"none",color:TERRACOTTA,fontWeight:700,padding:"7px 2px"}}>←</button>}
           <span style={{fontFamily:"'Playfair Display',serif",fontSize:"13px",color:"#b5a898",fontStyle:"italic"}}>{full}</span>
           {saving&&<span className="spin" style={{fontSize:"11px",color:"#b5a898"}}>⏳</span>}
         </div>
-        <div style={{display:"flex",gap:"6px",flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:"6px"}}>
           <button onClick={onEdit} style={vb}>✏ Editar</button>
           {!conf?<button onClick={()=>sc(true)} style={{...vb,color:"#C06060"}}>🗑</button>
             :<><button onClick={()=>{onDel();sc(false);}} style={{...vb,background:"#C06060",color:"white"}}>Excluir</button><button onClick={()=>sc(false)} style={vb}>✕</button></>}
         </div>
       </div>
-      <div style={{flex:1,overflowY:"auto",padding:mob?"16px":"28px"}}>
-        <div ref={viewRef} style={{background:entry.bg||"#FAF7F0",borderRadius:"24px",padding:mob?"36px 28px 32px":"48px 44px 44px",display:"flex",flexDirection:"column",minHeight:"520px"}}>
-          {/* Date top-left + mood top-right */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:"20px"}}>
-            <div style={{display:"flex",alignItems:"baseline",gap:"7px"}}>
-              <span style={{fontFamily:"'Playfair Display',serif",fontSize:"48px",fontWeight:700,color:d,lineHeight:1}}>{dn}</span>
-              <div><div style={{fontSize:"11px",color:d,lineHeight:1.3}}>{ms}.</div><div style={{fontSize:"11px",color:d,lineHeight:1.3}}>{yr}</div></div>
+
+      {/* Card fiel ao template */}
+      <div style={{flex:1,overflowY:"auto",padding:mob?"12px":"24px"}}>
+        <div ref={viewRef} style={{background:"#F9F5FB",borderRadius:"16px",padding:mob?"24px 20px":"36px 36px 32px",display:"flex",flexDirection:"column",gap:"16px",minHeight:"560px"}}>
+
+          {/* Header: título + data + mood */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontFamily:"'Dancing Script',cursive",fontSize:mob?"28px":"36px",color:"#9070B0"}}>Devocional</span>
+            <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+              <div style={{background:"#F0C8C0",borderRadius:"8px",padding:"6px 14px",fontSize:"12px",color:tc,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>{dn} {ms}. {yr}</div>
+              {cv.mood&&<span style={{fontSize:"22px"}}>{cv.mood}</span>}
             </div>
-            {cv.mood&&<span style={{fontSize:"28px",lineHeight:1}}>{cv.mood}</span>}
           </div>
-          <hr style={{border:"none",borderTop:`1px solid ${divClr}`,marginBottom:"20px"}}/>
-          {cv.referencia&&<p style={{fontFamily:"'Playfair Display',serif",fontSize:"16px",fontWeight:700,color:d,textAlign:"center",marginBottom:"12px",letterSpacing:"0.5px"}}>{cv.referencia}</p>}
-          {cv.texto&&<p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||15}px`,color:tc,fontStyle:"italic",textAlign:"center",marginBottom:"20px",lineHeight:1.7,opacity:0.85}}>"{cv.texto}"</p>}
-          {(cv.reflexao||cv.aplicacao||cv.oracao)&&<hr style={{border:"none",borderTop:`1px solid ${divClr}`,marginBottom:"20px"}}/>}
-          <FieldBlock label="Reflexão"   value={cv.reflexao}/>
-          <FieldBlock label="Aplicação"  value={cv.aplicacao}/>
-          <FieldBlock label="Oração"     value={cv.oracao} italic/>
+
+          {/* Gratidão + Oração */}
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"14px"}}>
+            <div>
+              <Label txt="Motivos de Gratidão" bg="#D4B8F0" color="#5A3880"/>
+              <Box border="#BFA8DC" minH={90}><TextField value={cv.gratidao}/></Box>
+            </div>
+            <div>
+              <Label txt="Pedidos de Oração" bg="#B8D8F0" color="#2A5878"/>
+              <Box border="#90BCDC" minH={90}><TextField value={cv.oracao_pedidos}/></Box>
+            </div>
+          </div>
+
+          {/* Leitura + Lições */}
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"14px"}}>
+            <div>
+              <Label txt="Leitura Bíblica" bg="#F0B8D8" color="#882858"/>
+              <Box border="#DC98BC" minH={80}>
+                <div style={{background:"#C4D4ED",borderRadius:"8px",padding:"10px 14px",fontSize:"13px",color:tc,fontFamily:"'Lora',serif",minHeight:"36px"}}>{cv.leitura||""}</div>
+              </Box>
+            </div>
+            <div>
+              <Label txt="3 Lições que Aprendi" bg="#B8E0D0" color="#1A6050"/>
+              <Box border="#90C0B0" minH={80}>
+                {[{v:cv.licao1,bg:"#C8B8E0"},{v:cv.licao2,bg:"#E8C8D8"},{v:cv.licao3,bg:"#F8C0B0"}].map(({v,bg},i)=>(
+                  <div key={i} style={{background:bg,borderRadius:"8px",padding:"8px 12px",fontSize:"12px",color:tc,fontFamily:"'Lora',serif",minHeight:"28px"}}>{v||""}</div>
+                ))}
+              </Box>
+            </div>
+          </div>
+
+          {/* Anotações */}
+          <div>
+            <Label txt="Minhas Anotações" bg="#F0C8C0" color="#883830"/>
+            <Box border="#E89898" minH={100}><TextField value={cv.anotacoes}/></Box>
+          </div>
+
+          {/* Rodapé */}
+          <p style={{textAlign:"center",fontSize:"10px",color:sub,letterSpacing:"1px",fontFamily:"'DM Sans',sans-serif",marginTop:"4px"}}>@IZABELALGONCALVES</p>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── DEVOCIONAL: EDITOR (formulário) ────────────────────────── */
+/* ── DEVOCIONAL: EDITOR (formulário fiel ao template) ───────── */
+function DevoEditor({entry,user,onSave,onCancel,mob}){
+  const today=new Date();
+  const initDate=entry?new Date(entry.date):today;
+  const initCv=entry?devoContent(entry):{};
+  const[selDate,ssd]=useState(initDate);
+  const[mood,sm]=useState(initCv.mood||"");
+  const[gratidao,sg]=useState(initCv.gratidao||"");
+  const[oracao_pedidos,sop]=useState(initCv.oracao_pedidos||"");
+  const[leitura,sl]=useState(initCv.leitura||"");
+  const[licao1,sl1]=useState(initCv.licao1||"");
+  const[licao2,sl2]=useState(initCv.licao2||"");
+  const[licao3,sl3]=useState(initCv.licao3||"");
+  const[anotacoes,san]=useState(initCv.anotacoes||"");
+  const[saving,ssav]=useState(false);
+  const{full,iso,dn,ms,yr}=pdi(selDate.toISOString());
+  const tc="#3a2e42";
+  const MOODS=["🙂","☹️","😢","😰"];
+
+  const handleSave=async()=>{
+    ssav(true);
+    const content=JSON.stringify({mood,gratidao,oracao_pedidos,leitura,licao1,licao2,licao3,anotacoes});
+    const e={id:entry?entry.id:Date.now().toString(),date:selDate.toISOString(),content,tags:[],font:"'Lora',Georgia,serif",bg:"#F9F5FB",fontSize:14,createdAt:entry?entry.createdAt:new Date().toISOString(),type:"devo"};
+    await onSave(e);ssav(false);
+  };
+
+  const Label=({txt,bg,color})=>(
+    <div style={{background:bg,color,fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"1.2px",padding:"4px 12px",borderRadius:"20px",display:"inline-block",marginBottom:"6px",fontFamily:"'DM Sans',sans-serif"}}>{txt}</div>
+  );
+  const boxStyle=(border)=>({border:`2px solid ${border}`,borderRadius:"10px",padding:"10px",display:"flex",flexDirection:"column",gap:"8px"});
+  const taStyle={background:"transparent",border:"none",outline:"none",resize:"none",fontFamily:"'Lora',serif",fontSize:"13px",color:tc,lineHeight:1.7,width:"100%",minHeight:"80px"};
+  const inpStyle={background:"transparent",border:"none",outline:"none",fontFamily:"'Lora',serif",fontSize:"13px",color:tc,width:"100%"};
+  const liStyle=(bg)=>({background:bg,borderRadius:"8px",padding:"6px 10px"});
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F9F5FB",overflow:"hidden"}}>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 18px",background:"rgba(255,255,255,0.9)",backdropFilter:"blur(12px)",borderBottom:"1px solid #E8D8F0",flexShrink:0}}>
+        <button onClick={onCancel} style={{background:"none",border:"none",cursor:"pointer",fontSize:"14px",color:"#9070B0",fontFamily:"'Lora',serif"}}>← Voltar</button>
+        <div style={{display:"flex",alignItems:"center",gap:"6px"}}>
+          <span style={{fontFamily:"'Dancing Script',cursive",fontSize:"22px",color:"#9070B0"}}>{full}</span>
+          <label style={{cursor:"pointer",fontSize:"14px"}} title="Alterar data">
+            <span>📅</span>
+            <input type="date" value={iso} onChange={e=>{if(e.target.value)ssd(new Date(e.target.value+"T12:00:00"));}} style={{position:"absolute",opacity:0,width:"1px",height:"1px",pointerEvents:"none"}}/>
+          </label>
+        </div>
+        <button onClick={handleSave} disabled={saving} style={{background:"none",border:"none",cursor:saving?"default":"pointer",fontSize:"14px",color:TERRACOTTA,fontWeight:700,fontFamily:"'Playfair Display',serif",opacity:saving?0.5:1}}>
+          {saving?<span className="spin">⏳</span>:"SALVAR"}
+        </button>
+      </div>
+
+      {/* Form */}
+      <div style={{flex:1,overflowY:"auto",padding:mob?"12px 14px":"20px 28px"}}>
+        <div style={{background:"#F9F5FB",borderRadius:"16px",padding:mob?"20px 16px":"32px 32px 28px",display:"flex",flexDirection:"column",gap:"16px",maxWidth:"860px",margin:"0 auto"}}>
+
+          {/* Header do card: título + data + mood */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:"10px"}}>
+            <span style={{fontFamily:"'Dancing Script',cursive",fontSize:mob?"26px":"34px",color:"#9070B0"}}>Devocional</span>
+            <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
+              <div style={{background:"#F0C8C0",borderRadius:"8px",padding:"6px 14px",fontSize:"12px",color:tc,fontWeight:600,fontFamily:"'DM Sans',sans-serif"}}>{dn} {ms}. {yr}</div>
+              <div style={{display:"flex",gap:"6px"}}>
+                {MOODS.map(m=>(
+                  <button key={m} onClick={()=>sm(mood===m?"":m)}
+                    style={{fontSize:"20px",background:"none",border:mood===m?"2px solid #9070B0":"2px solid transparent",borderRadius:"8px",padding:"2px",cursor:"pointer",opacity:mood&&mood!==m?0.35:1,transition:"all .15s"}}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Gratidão + Oração */}
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"14px"}}>
+            <div>
+              <Label txt="Motivos de Gratidão" bg="#D4B8F0" color="#5A3880"/>
+              <div style={boxStyle("#BFA8DC")}>
+                <textarea value={gratidao} onChange={e=>sg(e.target.value)} placeholder="Digite seus motivos de gratidão…" style={taStyle}/>
+              </div>
+            </div>
+            <div>
+              <Label txt="Pedidos de Oração" bg="#B8D8F0" color="#2A5878"/>
+              <div style={boxStyle("#90BCDC")}>
+                <textarea value={oracao_pedidos} onChange={e=>sop(e.target.value)} placeholder="Digite seus pedidos…" style={taStyle}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Leitura + Lições */}
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"14px"}}>
+            <div>
+              <Label txt="Leitura Bíblica" bg="#F0B8D8" color="#882858"/>
+              <div style={boxStyle("#DC98BC")}>
+                <div style={{background:"#C4D4ED",borderRadius:"8px",padding:"8px 12px"}}>
+                  <input type="text" value={leitura} onChange={e=>sl(e.target.value)} placeholder="Ex: João 3:16" style={inpStyle}/>
+                </div>
+              </div>
+            </div>
+            <div>
+              <Label txt="3 Lições que Aprendi" bg="#B8E0D0" color="#1A6050"/>
+              <div style={boxStyle("#90C0B0")}>
+                {[[licao1,sl1,"#C8B8E0"],[licao2,sl2,"#E8C8D8"],[licao3,sl3,"#F8C0B0"]].map(([val,setVal,bg],i)=>(
+                  <div key={i} style={liStyle(bg)}>
+                    <input type="text" value={val} onChange={e=>setVal(e.target.value)} placeholder={`Lição ${i+1}…`} style={inpStyle}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Anotações */}
+          <div>
+            <Label txt="Minhas Anotações" bg="#F0C8C0" color="#883830"/>
+            <div style={boxStyle("#E89898")}>
+              <textarea value={anotacoes} onChange={e=>san(e.target.value)} placeholder="Suas anotações livres…" style={{...taStyle,minHeight:"110px"}}/>
+            </div>
+          </div>
+
+          <p style={{textAlign:"center",fontSize:"10px",color:"#a090b0",letterSpacing:"1px",fontFamily:"'DM Sans',sans-serif"}}>@IZABELALGONCALVES</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DevoEditor({entry,user,onSave,onCancel,mob}){
   const today=new Date();
   const initDate=entry?new Date(entry.date):today;
