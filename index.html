@@ -37,7 +37,7 @@ const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 /* ── SUPABASE ── substitua se necessário ── */
 const SUPABASE_URL  = "https://mlznzzskyqagriojsxmw.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
+const SUPABASE_ANON = "SUA_ANON_KEY";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{persistSession:false,autoRefreshToken:false},
 });
@@ -948,7 +948,7 @@ function DevoSection({entries,user,onSave,onDel,openEditor,mob}){
 /* ── SIDEBAR ────────────────────────────────────────────────── */
 function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,mob,onEntryClick,section,setSection}){
   const[tab,st]=useState("timeline");
-  const diaryEntries=entries.filter(e=>e.type!=="frase");
+  const diaryEntries=entries.filter(e=>!e.type||e.type==="diary");
   const tags=[...new Set(diaryEntries.flatMap(e=>e.tags||[]))];
   const fil=diaryEntries.filter(e=>!stag||(e.tags||[]).includes(stag)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const grp=fil.reduce((a,e)=>{const d=new Date(e.date);const k=`${MPT[d.getMonth()]} ${d.getFullYear()}`;(a[k]=a[k]||[]).push(e);return a;},{});
@@ -995,7 +995,7 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
 
   const calSection=(
     <div style={{padding:mob?"0 0 16px":"14px 18px",borderBottom:mob?"none":"1px solid #EDE5DC"}}>
-      <Cal entries={entries} sel={selDate} onSel={date=>{setSel(date);const f=entries.find(e=>e.type!=="frase"&&(()=>{const d=new Date(e.date);return d.getDate()===date.getDate()&&d.getMonth()===date.getMonth()&&d.getFullYear()===date.getFullYear();})());if(f){setSE(f);if(onEntryClick)onEntryClick(f);}else setSE(null);}}/>
+      <Cal entries={entries} sel={selDate} onSel={date=>{setSel(date);const f=entries.find(e=>(!e.type||e.type==="diary")&&(()=>{const d=new Date(e.date);return d.getDate()===date.getDate()&&d.getMonth()===date.getMonth()&&d.getFullYear()===date.getFullYear();})());if(f){setSE(f);if(onEntryClick)onEntryClick(f);}else setSE(null);}}/>
     </div>
   );
 
