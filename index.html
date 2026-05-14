@@ -37,7 +37,7 @@ const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 /* ── SUPABASE ── substitua se necessário ── */
 const SUPABASE_URL  = "https://mlznzzskyqagriojsxmw.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
+const SUPABASE_ANON = "SUA_ANON_KEY";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{persistSession:false,autoRefreshToken:false},
 });
@@ -893,136 +893,6 @@ function DevoEditor({entry,user,onSave,onCancel,mob}){
   );
 }
 
-function DevoEditor({entry,user,onSave,onCancel,mob}){
-  const today=new Date();
-  const initDate=entry?new Date(entry.date):today;
-  const initCv=entry?devoContent(entry):{};
-  const[selDate,ssd]=useState(initDate);
-  const[mood,sm]=useState(initCv.mood||"");
-  const[ref_,sr]=useState(initCv.referencia||"");
-  const[texto,st]=useState(initCv.texto||"");
-  const[refl,srl]=useState(initCv.reflexao||"");
-  const[aplic,sap]=useState(initCv.aplicacao||"");
-  const[orac,sor]=useState(initCv.oracao||"");
-  const[bg,sbg]=useState(entry?.bg||BGS[0].v);
-  const[font,sf]=useState(entry?.font||FONTS[1].value);
-  const[fontSize,sfz]=useState(entry?.fontSize||15);
-  const[saving,ssav]=useState(false);
-  const{full,iso}=pdi(selDate.toISOString());
-  const dk=dark(bg);
-  const tc=dk?"rgba(255,255,255,0.92)":"#1a1410";
-  const d=dc(bg);
-  const bar=dk?"rgba(0,0,0,0.55)":"rgba(255,255,255,0.95)";
-  const divClr=dk?"rgba(255,255,255,0.12)":"rgba(0,0,0,0.07)";
-  const MOODS=["🙂","☹️","😢","😰"];
-  const inp={width:"100%",background:"transparent",border:"none",outline:"none",borderBottom:`1px solid ${divClr}`,padding:"6px 0",fontFamily:font,fontSize:`${fontSize}px`,color:tc,lineHeight:1.7,resize:"none",overflow:"hidden"};
-  const lbl={fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:d,fontFamily:"'Playfair Display',serif",display:"block",marginBottom:"4px"};
-  const ar=el=>{if(!el)return;el.style.height="auto";el.style.height=el.scrollHeight+"px";};
-
-  const handleSave=async()=>{
-    if(!refl.trim()&&!texto.trim()&&!orac.trim()){alert("Preencha pelo menos um campo.");return;}
-    ssav(true);
-    const content=JSON.stringify({mood,referencia:ref_,texto,reflexao:refl,aplicacao:aplic,oracao:orac});
-    const e={id:entry?entry.id:Date.now().toString(),date:selDate.toISOString(),content,tags:[],font,bg,fontSize,createdAt:entry?entry.createdAt:new Date().toISOString(),type:"devo"};
-    await onSave(e);
-    ssav(false);
-  };
-
-  return(
-    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:bg,transition:"background .3s"}}>
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 18px",background:bar,backdropFilter:"blur(12px)",borderBottom:dk?"1px solid rgba(255,255,255,0.08)":"1px solid rgba(0,0,0,0.06)",flexShrink:0}}>
-        <button onClick={onCancel} style={{background:"none",border:"none",cursor:"pointer",fontSize:"14px",color:d,fontFamily:"'Lora',serif"}}>← Voltar</button>
-        <div style={{display:"flex",alignItems:"center",gap:"6px",flex:1,justifyContent:"center"}}>
-          <span style={{fontFamily:"'Playfair Display',serif",fontSize:"12px",color:d,fontStyle:"italic"}}>{full}</span>
-          <label style={{cursor:"pointer",fontSize:"15px",flexShrink:0}}>
-            <span>📅</span>
-            <input type="date" value={iso} onChange={e=>{if(e.target.value)ssd(new Date(e.target.value+"T12:00:00"));}} style={{position:"absolute",opacity:0,width:"1px",height:"1px",pointerEvents:"none"}}/>
-          </label>
-        </div>
-        <button onClick={handleSave} disabled={saving} style={{background:"none",border:"none",cursor:saving?"default":"pointer",fontSize:"14px",color:TERRACOTTA,fontWeight:700,fontFamily:"'Playfair Display',serif",opacity:saving?0.5:1}}>
-          {saving?<span className="spin">⏳</span>:"SALVAR"}
-        </button>
-      </div>
-
-      {/* Form card */}
-      <div style={{flex:1,overflow:"auto",padding:mob?"12px":"20px"}}>
-        <div style={{background:bg,borderRadius:"20px",padding:mob?"28px 22px":"36px 36px",minHeight:"calc(100vh - 170px)"}}>
-          {/* Date + Mood */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"20px"}}>
-            <div style={{display:"flex",alignItems:"baseline",gap:"7px"}}>
-              <span style={{fontFamily:"'Playfair Display',serif",fontSize:"44px",fontWeight:700,color:d,lineHeight:1}}>{pdi(selDate.toISOString()).dn}</span>
-              <div><div style={{fontSize:"11px",color:d,lineHeight:1.3}}>{pdi(selDate.toISOString()).ms}.</div><div style={{fontSize:"11px",color:d,lineHeight:1.3}}>{pdi(selDate.toISOString()).yr}</div></div>
-            </div>
-            <div style={{display:"flex",gap:"8px"}}>
-              {MOODS.map(m=>(
-                <button key={m} onClick={()=>sm(mood===m?"":m)}
-                  style={{fontSize:"22px",background:"none",border:mood===m?`2px solid ${d}`:"2px solid transparent",borderRadius:"10px",padding:"2px 4px",cursor:"pointer",opacity:mood&&mood!==m?0.4:1,transition:"all .15s"}}>
-                  {m}
-                </button>
-              ))}
-            </div>
-          </div>
-          <hr style={{border:"none",borderTop:`1px solid ${divClr}`,marginBottom:"20px"}}/>
-
-          {/* Referência */}
-          <div style={{marginBottom:"18px"}}>
-            <span style={lbl}>Referência</span>
-            <input type="text" value={ref_} onChange={e=>sr(e.target.value)} placeholder="Ex: João 3:16"
-              style={{...inp,display:"block"}}/>
-          </div>
-
-          {/* Texto */}
-          <div style={{marginBottom:"20px"}}>
-            <span style={lbl}>Texto</span>
-            <textarea value={texto} onChange={e=>{st(e.target.value);ar(e.target);}} placeholder="A passagem do dia…"
-              style={{...inp,minHeight:"60px"}} ref={el=>el&&ar(el)}/>
-          </div>
-          <hr style={{border:"none",borderTop:`1px solid ${divClr}`,marginBottom:"20px"}}/>
-
-          {/* Reflexão */}
-          <div style={{marginBottom:"18px"}}>
-            <span style={lbl}>Reflexão</span>
-            <textarea value={refl} onChange={e=>{srl(e.target.value);ar(e.target);}} placeholder="O que esse texto me diz hoje…"
-              style={{...inp,minHeight:"72px"}} ref={el=>el&&ar(el)}/>
-          </div>
-
-          {/* Aplicação */}
-          <div style={{marginBottom:"18px"}}>
-            <span style={lbl}>Aplicação</span>
-            <textarea value={aplic} onChange={e=>{sap(e.target.value);ar(e.target);}} placeholder="Como vou aplicar isso hoje…"
-              style={{...inp,minHeight:"60px"}} ref={el=>el&&ar(el)}/>
-          </div>
-
-          {/* Oração */}
-          <div style={{marginBottom:"8px"}}>
-            <span style={lbl}>Oração</span>
-            <textarea value={orac} onChange={e=>{sor(e.target.value);ar(e.target);}} placeholder="Senhor…"
-              style={{...inp,minHeight:"72px",fontStyle:"italic"}} ref={el=>el&&ar(el)}/>
-          </div>
-        </div>
-
-        {/* Toolbar: cor de fundo, fonte, tamanho */}
-        <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap",padding:"12px 4px 4px"}}>
-          <div style={{display:"flex",gap:"4px",alignItems:"center"}}>
-            {BGS.map(o=><button key={o.v} onClick={()=>sbg(o.v)} title={o.label} style={{width:"20px",height:"20px",borderRadius:"50%",background:o.v,padding:0,flexShrink:0,border:bg===o.v?"2.5px solid "+TERRACOTTA:"1.5px solid rgba(0,0,0,0.12)",cursor:"pointer"}}/>)}
-          </div>
-          <select value={font} onChange={e=>sf(e.target.value)}
-            style={{background:dk?"rgba(255,255,255,0.1)":"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 10px",fontSize:"12px",color:tc,fontFamily:font,cursor:"pointer",outline:"none"}}>
-            {FONTS.map(f=><option key={f.value} value={f.value} style={{fontFamily:f.value}}>{f.label}</option>)}
-          </select>
-          <div style={{display:"flex",alignItems:"center",gap:"2px",background:dk?"rgba(255,255,255,0.08)":"#F5EDE0",borderRadius:"9px",padding:"4px 6px"}}>
-            <button onClick={()=>sfz(s=>Math.max(12,s-1))} style={{background:"none",border:"none",cursor:"pointer",color:TERRACOTTA,fontSize:"13px",fontWeight:700}}>A-</button>
-            <span style={{fontSize:"10px",color:tc,minWidth:"24px",textAlign:"center"}}>{fontSize}px</span>
-            <button onClick={()=>sfz(s=>Math.min(36,s+1))} style={{background:"none",border:"none",cursor:"pointer",color:TERRACOTTA,fontSize:"13px",fontWeight:700}}>A+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── DEVOCIONAL: SEÇÃO (lista) ──────────────────────────────── */
 function DevoSection({entries,user,onSave,onDel,openEditor,mob}){
   const devos=entries.filter(e=>e.type==="devo").sort((a,b)=>new Date(b.date)-new Date(a.date));
   const[selDevo,ss]=useState(null);
