@@ -37,7 +37,7 @@ const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 /* ── SUPABASE ── substitua se necessário ── */
 const SUPABASE_URL  = "https://mlznzzskyqagriojsxmw.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
+const SUPABASE_ANON = "SUA_ANON_KEY";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{persistSession:false,autoRefreshToken:false},
 });
@@ -1102,11 +1102,11 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
           <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>🚪</span>Sair</button>
           <button onClick={()=>open(null,new Date())} style={{background:TERRACOTTA,color:"white",border:"none",borderRadius:"50%",width:"54px",height:"54px",fontSize:"28px",cursor:"pointer",boxShadow:"0 4px 16px rgba(196,120,90,0.4)",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:"6px"}}>+</button>
           <button onClick={showPdf} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button>
+          <button onClick={showBackup} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#9070B0",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>💾</span>Backup</button>
         </div>
       </div>
     );
   }
-
   return(
     <aside style={{width:"300px",minWidth:"300px",background:"white",borderRight:"1px solid #EDE5DC",display:"flex",flexDirection:"column",overflow:"hidden"}}>
       {header}
@@ -1124,7 +1124,10 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
       )}
       <div style={{padding:"10px 18px",borderTop:"1px solid #EDE5DC",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair da conta</button>
-        <button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>📄 PDF</button><button onClick={showBackup} style={{background:"#F0EAF8",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#9070B0",fontFamily:"'Lora',serif"}}>💾 Backup</button>
+        <div style={{display:"flex",gap:"6px"}}>
+          <button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>📄 PDF</button>
+          <button onClick={showBackup} style={{background:"#F0EAF8",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#9070B0",fontFamily:"'Lora',serif"}}>💾 Backup</button>
+        </div>
       </div>
     </aside>
   );
