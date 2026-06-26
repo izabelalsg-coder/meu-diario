@@ -37,7 +37,7 @@ const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
 /* ── SUPABASE ── substitua se necessário ── */
 const SUPABASE_URL  = "https://mlznzzskyqagriojsxmw.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
+const SUPABASE_ANON = "SUA_ANON_KEY";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   auth:{persistSession:false,autoRefreshToken:false},
 });
@@ -527,6 +527,71 @@ function FrasesSection({entries,user,onSave,onDel,openFullEditor,mob}){
   );
 }
 
+/* ── MODAL DE BACKUP ────────────────────────────────────────── */
+function BackupModal({entries,user,onImport,onClose}){
+  const[importing,si]=useState(false);
+  const[msg,sm]=useState("");
+  const fileRef=useRef(null);
+
+  const exportJSON=()=>{
+    const data={version:1,exported_at:new Date().toISOString(),user:user?.email,entries:entries};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const a=document.createElement("a");
+    a.download=`meu-diario-backup-${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.json`;
+    a.href=URL.createObjectURL(blob);a.click();
+    sm("✓ Backup baixado com sucesso.");
+  };
+
+  const importJSON=async(e)=>{
+    const file=e.target.files[0];if(!file)return;
+    si(true);sm("Importando…");
+    try{
+      const text=await file.text();
+      const data=JSON.parse(text);
+      if(!data.entries||!Array.isArray(data.entries)){sm("Arquivo inválido.");si(false);return;}
+      let count=0;
+      for(const entry of data.entries){
+        await dbSave(entry,user.id);count++;
+      }
+      onImport();
+      sm(`✓ ${count} entradas restauradas com sucesso!`);
+    }catch(err){sm("Erro ao importar: "+err.message);}
+    si(false);
+  };
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.44)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,padding:"20px"}}>
+      <div className="slide-up" style={{background:"white",borderRadius:"24px",padding:"36px 30px",width:"100%",maxWidth:"420px",boxShadow:"0 16px 60px rgba(0,0,0,0.18)"}}>
+        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#1a1410",marginBottom:"6px"}}>Backup do Diário</h2>
+        <p style={{fontSize:"13px",color:"#b5a898",marginBottom:"24px",fontStyle:"italic"}}>Salve seus dados localmente ou restaure de um backup anterior.</p>
+
+        {/* Exportar */}
+        <div style={{background:"#F5EDE0",borderRadius:"14px",padding:"18px",marginBottom:"12px"}}>
+          <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",marginBottom:"4px"}}>⬇ Exportar backup</p>
+          <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Baixa um arquivo JSON com todas as suas entradas do diário, frases e devocionais.</p>
+          <button onClick={exportJSON} style={{width:"100%",padding:"11px",background:TERRACOTTA,border:"none",borderRadius:"11px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white"}}>
+            Baixar backup ({entries.length} entradas)
+          </button>
+        </div>
+
+        {/* Importar */}
+        <div style={{background:"#F0EAF8",borderRadius:"14px",padding:"18px",marginBottom:"16px"}}>
+          <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",marginBottom:"4px"}}>⬆ Restaurar backup</p>
+          <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Selecione um arquivo de backup JSON gerado anteriormente por este app.</p>
+          <input ref={fileRef} type="file" accept=".json" onChange={importJSON} style={{display:"none"}}/>
+          <button onClick={()=>fileRef.current?.click()} disabled={importing} style={{width:"100%",padding:"11px",background:"#9070B0",border:"none",borderRadius:"11px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white",opacity:importing?0.6:1}}>
+            {importing?"Importando…":"Selecionar arquivo JSON"}
+          </button>
+        </div>
+
+        {msg&&<p style={{fontSize:"13px",color:msg.startsWith("✓")?TERRACOTTA:"#C06060",textAlign:"center",marginBottom:"12px"}}>{msg}</p>}
+
+        <button onClick={onClose} style={{width:"100%",padding:"12px",background:"#F5EDE0",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>Fechar</button>
+      </div>
+    </div>
+  );
+}
+
 /* ── MODAL PDF ──────────────────────────────────────────────── */
 function PdfModal({entries,onClose}){
   const sorted=useMemo(()=>[...entries].sort((a,b)=>new Date(a.date)-new Date(b.date)),[entries]);
@@ -946,7 +1011,7 @@ function DevoSection({entries,user,onSave,onDel,openEditor,mob}){
 
 
 /* ── SIDEBAR ────────────────────────────────────────────────── */
-function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,mob,onEntryClick,section,setSection}){
+function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,showBackup,mob,onEntryClick,section,setSection}){
   const[tab,st]=useState("timeline");
   const diaryEntries=entries.filter(e=>!e.type||e.type==="diary");
   const tags=[...new Set(diaryEntries.flatMap(e=>e.tags||[]))];
@@ -1059,7 +1124,7 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
       )}
       <div style={{padding:"10px 18px",borderTop:"1px solid #EDE5DC",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair da conta</button>
-        <button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>📄 Exportar PDF</button>
+        <button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>📄 PDF</button><button onClick={showBackup} style={{background:"#F0EAF8",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#9070B0",fontFamily:"'Lora',serif"}}>💾 Backup</button>
       </div>
     </aside>
   );
@@ -1077,6 +1142,7 @@ function App(){
   const[ec,sec]=useState("");const[et,set]=useState([]);const[ef,sef]=useState(FONTS[0].value);
   const[ebg,sebg]=useState(BGS[0].v);const[efz,sefz]=useState(17);const[edit,sedit]=useState(null);
   const[pdfOpen,spdf]=useState(false);
+  const[backupOpen,sbkp]=useState(false);
   const[mobEnt,sme]=useState(false);
   const[saving,ssav]=useState(false);
   const[section,setSec]=useState("diary");  // "diary" | "frases" | "devo"
@@ -1136,6 +1202,7 @@ function App(){
   };
 
   const logout=async()=>{await sb.auth.signOut();su(null);se([]);sse(null);setSCR("login");};
+  const reloadEntries=async()=>{try{const e=await dbLoad();se(e);}catch(e){console.error(e);}};
 
   if(scr==="loading")return<Loading/>;
   if(scr==="login")return<Login onAuth={auth}/>;
@@ -1147,20 +1214,20 @@ function App(){
       date={selDate} sd={ssd} onSave={saveEntry} onCancel={()=>setSCR("diary")} mob={mob} saving={saving} isFrase={isFrase}/>
   );
 
-  const sbProps={entries,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),section,setSection:setSec};
+  const sbProps={entries,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),showBackup:()=>sbkp(true),section,setSection:setSec};
 
   /* Mobile: viewer frase */
   if(mob&&mobEnt&&selEntry&&selEntry.type==="frase")return(
     <><div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
       <FraseViewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry,new Date(selEntry.date),true)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: viewer diário */
   if(mob&&mobEnt&&selEntry)return(
     <><div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
       <Viewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: devo */
@@ -1179,9 +1246,9 @@ function App(){
       </div>
       <div style={{borderTop:"1px solid #EDE5DC",padding:"10px 28px 14px",display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",flexShrink:0}}>
         <button onClick={()=>setSec("diary")} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📖</span>Diário</button>
-        <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button>
+        <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button><button onClick={()=>sbkp(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>💾</span>Backup</button>
       </div>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: frases grid */
@@ -1202,14 +1269,14 @@ function App(){
       </div>
       <div style={{borderTop:"1px solid #EDE5DC",padding:"10px 28px 14px",display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",flexShrink:0}}>
         <button onClick={()=>setSec("diary")} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📖</span>Diário</button>
-        <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button>
+        <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button><button onClick={()=>sbkp(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>💾</span>Backup</button>
       </div>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: diário */
   if(mob)return(
-    <><Sidebar {...sbProps} mob={true} onEntryClick={e=>{sse(e);sme(true);}}/>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}</>
+    <><Sidebar {...sbProps} mob={true} onEntryClick={e=>{sse(e);sme(true);}}/>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Desktop */
@@ -1234,7 +1301,7 @@ function App(){
           </div>
         )}
       </main>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 }
 
