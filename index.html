@@ -651,12 +651,42 @@ function BackupModal({entries,user,onImport,onClose}){
       const text=await file.text();
       const data=JSON.parse(text);
       if(!data.entries||!Array.isArray(data.entries)){sm("Arquivo inválido.");si(false);return;}
-      let count=0;
-      for(const entry of data.entries){
-        await dbSave(entry);count++;
+
+      // Busca IDs existentes na planilha
+      const existing=await sheetsReq("/values/A2:A");
+      const existingIds=new Set((existing.values||[]).map(r=>r[0]).filter(Boolean));
+
+      // Separa entradas novas das que já existem
+      const newEntries=data.entries.filter(e=>!existingIds.has(e.id));
+      const updateEntries=data.entries.filter(e=>existingIds.has(e.id));
+
+      // Salva todas as entradas novas em uma única chamada
+      if(newEntries.length>0){
+        await sheetsReq(
+          "/values/A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS",
+          "POST",
+          {values:newEntries.map(entryToRow)}
+        );
       }
+
+      // Atualiza entradas existentes individualmente (geralmente poucas)
+      if(updateEntries.length>0){
+        const allRows=await sheetsReq("/values/A2:A");
+        const rows=(allRows.values||[]);
+        for(const entry of updateEntries){
+          const idx=rows.findIndex(r=>r[0]===entry.id);
+          if(idx!==-1){
+            await sheetsReq(
+              `/values/A${idx+2}:I${idx+2}?valueInputOption=RAW`,
+              "PUT",
+              {values:[entryToRow(entry)]}
+            );
+          }
+        }
+      }
+
       onImport();
-      sm(`✓ ${count} entradas restauradas com sucesso!`);
+      sm(`✓ ${data.entries.length} entradas restauradas com sucesso!`);
     }catch(err){sm("Erro ao importar: "+err.message);}
     si(false);
   };
