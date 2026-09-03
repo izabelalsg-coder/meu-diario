@@ -38,7 +38,7 @@ const {useState,useEffect,useRef,useCallback,useMemo}=React;
 /* ── GOOGLE SHEETS ─────────────────────────────────────────── */
 const CLIENT_ID = "905970466142-j83u7hhtaqu6dnohg07bk727jq0vsb86.apps.googleusercontent.com";
 const SHEET_ID  = "1nEBezRl2w-6649_vPn-p0tkf_Nb-of7s-uMQxoLh9Sk";
-const SCOPES    = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email";
+const SCOPES    = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email";
 let gAccessToken = null;
 let gTokenClient = null;
 
@@ -583,16 +583,65 @@ function FrasesSection({entries,user,onSave,onDel,openFullEditor,mob}){
 /* ── MODAL DE BACKUP ────────────────────────────────────────── */
 function BackupModal({entries,user,onImport,onClose}){
   const[importing,si]=useState(false);
+  const[exporting,sex]=useState(false);
   const[msg,sm]=useState("");
   const fileRef=useRef(null);
 
-  const exportJSON=()=>{
-    const data={version:1,exported_at:new Date().toISOString(),user:user?.email,entries:entries};
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-    const a=document.createElement("a");
-    a.download=`meu-diario-backup-${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.json`;
-    a.href=URL.createObjectURL(blob);a.click();
-    sm("✓ Backup baixado com sucesso.");
+  const exportToDrive=async()=>{
+    sex(true);sm("Salvando no Drive…");
+    try{
+      const fileName=`meu-diario-backup-${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.json`;
+      const data={version:1,exported_at:new Date().toISOString(),user:user?.email,entries:entries};
+      const content=JSON.stringify(data,null,2);
+
+      // Find or create "Meu Diário" folder
+      const searchResp=await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=name%3D'Meu+Di%C3%A1rio'+and+mimeType%3D'application%2Fvnd.google-apps.folder'+and+trashed%3Dfalse&fields=files(id,name)`,
+        {headers:{Authorization:`Bearer ${gAccessToken}`}}
+      );
+      const searchData=await searchResp.json();
+      let folderId;
+      if(searchData.files&&searchData.files.length>0){
+        folderId=searchData.files[0].id;
+      }else{
+        // Create folder
+        const createResp=await fetch("https://www.googleapis.com/drive/v3/files",{
+          method:"POST",
+          headers:{Authorization:`Bearer ${gAccessToken}`,"Content-Type":"application/json"},
+          body:JSON.stringify({name:"Meu Diário",mimeType:"application/vnd.google-apps.folder"})
+        });
+        const createData=await createResp.json();
+        folderId=createData.id;
+      }
+
+      // Upload file using multipart
+      const boundary="diary_backup_boundary";
+      const metadata=JSON.stringify({name:fileName,parents:[folderId]});
+      const body=[
+        `--${boundary}`,
+        "Content-Type: application/json; charset=UTF-8",
+        "",
+        metadata,
+        `--${boundary}`,
+        "Content-Type: application/json",
+        "",
+        content,
+        `--${boundary}--`
+      ].join("\r\n");
+
+      const uploadResp=await fetch(
+        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",
+        {method:"POST",headers:{Authorization:`Bearer ${gAccessToken}`,
+          "Content-Type":`multipart/related; boundary=${boundary}`},body}
+      );
+      const uploadData=await uploadResp.json();
+      if(uploadData.id){
+        sm(`✓ Backup salvo na pasta "Meu Diário" do Drive!`);
+      }else{
+        sm("Erro ao salvar no Drive. Tente novamente.");
+      }
+    }catch(err){sm("Erro: "+err.message);}
+    sex(false);
   };
 
   const importJSON=async(e)=>{
@@ -618,12 +667,12 @@ function BackupModal({entries,user,onImport,onClose}){
         <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#1a1410",marginBottom:"6px"}}>Backup do Diário</h2>
         <p style={{fontSize:"13px",color:"#b5a898",marginBottom:"24px",fontStyle:"italic"}}>Salve seus dados localmente ou restaure de um backup anterior.</p>
 
-        {/* Exportar */}
+        {/* Exportar para Drive */}
         <div style={{background:"#F5EDE0",borderRadius:"14px",padding:"18px",marginBottom:"12px"}}>
-          <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",marginBottom:"4px"}}>⬇ Exportar backup</p>
-          <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Baixa um arquivo JSON com todas as suas entradas do diário, frases e devocionais.</p>
-          <button onClick={exportJSON} style={{width:"100%",padding:"11px",background:TERRACOTTA,border:"none",borderRadius:"11px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white"}}>
-            Baixar backup ({entries.length} entradas)
+          <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",marginBottom:"4px"}}>☁️ Salvar backup no Drive</p>
+          <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Salva um arquivo JSON na pasta "Meu Diário" do seu Google Drive automaticamente.</p>
+          <button onClick={exportToDrive} disabled={exporting} style={{width:"100%",padding:"11px",background:exporting?"#d4a090":TERRACOTTA,border:"none",borderRadius:"11px",fontSize:"14px",cursor:exporting?"default":"pointer",fontFamily:"'Playfair Display',serif",color:"white"}}>
+            {exporting?"Salvando…":`Salvar no Drive (${entries.length} entradas)`}
           </button>
         </div>
 
