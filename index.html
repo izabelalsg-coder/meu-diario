@@ -1333,16 +1333,18 @@ function App(){
           if(resp.error){setSCR("login");return;}
           gAccessToken=resp.access_token;
           try{
-            // Get user info
             const ui=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",
               {headers:{Authorization:`Bearer ${gAccessToken}`}}).then(r=>r.json());
             su(ui);
-            // Init sheet and load entries
             await initSheet();
             const ents=await dbLoad();
             se(ents);
             setSCR("diary");
-          }catch(err){console.error(err);setSCR("login");}
+          }catch(err){
+            console.error(err);
+            alert("Erro ao carregar dados:\n\n"+err.message+"\n\nVerifique se a API do Google Sheets está ativada no seu projeto Google Cloud.");
+            setSCR("login");
+          }
         }
       });
       setSCR("login");
