@@ -321,7 +321,7 @@ function Login({onSignIn}){
   const doSignIn=()=>{
     if(!ready||!gTokenClient){sm("Aguarde o Google carregar e tente novamente.");return;}
     sb(true);sm("");
-    try{gTokenClient.requestAccessToken();}
+    try{gTokenClient.requestAccessToken({prompt:"consent"});}
     catch(e){sb(false);sm("Erro ao iniciar login: "+e.message);}
   };
 
