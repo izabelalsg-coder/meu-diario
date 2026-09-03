@@ -685,7 +685,7 @@ function BackupModal({entries,user,onImport,onClose}){
         }
       }
 
-      onImport();
+      onImport(data.entries);
       sm(`✓ ${data.entries.length} entradas restauradas com sucesso!`);
     }catch(err){sm("Erro ao importar: "+err.message);}
     si(false);
@@ -1355,7 +1355,22 @@ function App(){
     if(gAccessToken&&window.google)google.accounts.oauth2.revoke(gAccessToken,()=>{});
     gAccessToken=null;su(null);se([]);sse(null);setSCR("login");
   };
-  const reloadEntries=async()=>{try{const e=await dbLoad();se(e);}catch(e){console.error(e);}};
+  const reloadEntries=async(importedEntries)=>{
+    if(importedEntries){
+      // Importação: mescla entradas importadas com as existentes
+      se(prev=>{
+        const existingIds=new Set(prev.map(e=>e.id));
+        const novas=importedEntries.filter(e=>!existingIds.has(e.id));
+        const atualizadas=prev.map(e=>{
+          const imp=importedEntries.find(i=>i.id===e.id);
+          return imp||e;
+        });
+        return[...atualizadas,...novas].sort((a,b)=>new Date(b.date)-new Date(a.date));
+      });
+    }else{
+      try{const e=await dbLoad();se(e);}catch(e){console.error(e);}
+    }
+  };
 
   if(scr==="loading")return<Loading/>;
   if(scr==="login")return<Login onSignIn={()=>gTokenClient&&gTokenClient.requestAccessToken()}/>;
