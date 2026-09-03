@@ -1330,11 +1330,14 @@ function App(){
         client_id:CLIENT_ID,
         scope:SCOPES,
         callback:async(resp)=>{
-          if(resp.error){setSCR("login");return;}
+          // Diagnóstico: confirma se callback é chamado
+          if(!resp){alert("Callback chamado sem resposta.");setSCR("login");return;}
+          if(resp.error){alert("Erro Google OAuth: "+resp.error);setSCR("login");return;}
           gAccessToken=resp.access_token;
           try{
             const ui=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",
               {headers:{Authorization:`Bearer ${gAccessToken}`}}).then(r=>r.json());
+            if(ui.error){throw new Error("Userinfo: "+JSON.stringify(ui.error));}
             su(ui);
             await initSheet();
             const ents=await dbLoad();
