@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Caveat:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500&family=Dancing+Script:wght@400;600&family=Sacramento&family=Great+Vibes&family=Satisfy&family=Pacifico&family=Kalam:wght@300;400&family=Indie+Flower&display=swap" rel="stylesheet"/>
 <link rel="manifest" href="/meu-diario/manifest.json"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
@@ -35,12 +35,68 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:0.5;cursor:pointer
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback,useMemo}=React;
 
-/* ── SUPABASE ── substitua se necessário ── */
-const SUPABASE_URL  = "https://mlznzzskyqagriojsxmw.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sem56enNreXFhZ3Jpb2pzeG13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODcwMDQsImV4cCI6MjA5MDU2MzAwNH0.0Ah-fsxfn_SjAj-KRWoYOJ75NODwoJHc1-VPBSZ7u60";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-  auth:{persistSession:false,autoRefreshToken:false},
-});
+/* ── GOOGLE SHEETS ─────────────────────────────────────────── */
+const CLIENT_ID = "905970466142-j83u7hhtaqu6dnohg07bk727jq0vsb86.apps.googleusercontent.com";
+const SHEET_ID  = "1nEBezRl2w-6649_vPn-p0tkf_Nb-of7s-uMQxoLh9Sk";
+const SCOPES    = "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email";
+let gAccessToken = null;
+let gTokenClient = null;
+
+async function sheetsReq(path, method="GET", body=null){
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}${path}`,{
+    method, headers:{"Authorization":`Bearer ${gAccessToken}`,"Content-Type":"application/json"},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if(r.status===401){gAccessToken=null;throw new Error("Token expirado. Faça login novamente.");}
+  return r.json();
+}
+
+async function initSheet(){
+  const d = await sheetsReq("/values/A1:A1");
+  if(!(d.values&&d.values[0]&&d.values[0][0]==="id")){
+    await sheetsReq("/values/A1:I1?valueInputOption=RAW","PUT",
+      {values:[["id","date","content","tags","font","bg","fontSize","type","createdAt"]]});
+  }
+}
+
+function rowToEntry(r){
+  return{id:r[0],date:r[1],content:r[2],tags:JSON.parse(r[3]||"[]"),font:r[4],bg:r[5],
+    fontSize:parseInt(r[6])||17,type:r[7]||"diary",createdAt:r[8]};
+}
+function entryToRow(e){
+  return[e.id,e.date,e.content,JSON.stringify(e.tags||[]),e.font,e.bg,e.fontSize||17,e.type||"diary",e.createdAt];
+}
+
+async function dbLoad(){
+  const d = await sheetsReq("/values/A2:I");
+  return (d.values||[]).filter(r=>r[0]).map(rowToEntry).sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+
+async function dbSave(entry){
+  const d = await sheetsReq("/values/A2:A");
+  const rows = d.values||[];
+  const idx = rows.findIndex(r=>r[0]===entry.id);
+  if(idx===-1){
+    await sheetsReq("/values/A1:I1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS","POST",
+      {values:[entryToRow(entry)]});
+  }else{
+    const row = idx+2;
+    await sheetsReq(`/values/A${row}:I${row}?valueInputOption=RAW`,"PUT",
+      {values:[entryToRow(entry)]});
+  }
+}
+
+async function dbDelete(id){
+  const d = await sheetsReq("/values/A2:A");
+  const rows = d.values||[];
+  const idx = rows.findIndex(r=>r[0]===id);
+  if(idx===-1) return;
+  const sheetMeta = await sheetsReq("?fields=sheets.properties");
+  const sheetId = sheetMeta.sheets[0].properties.sheetId;
+  await sheetsReq(":batchUpdate","POST",{requests:[{deleteDimension:{range:{
+    sheetId, dimension:"ROWS", startIndex:idx+1, endIndex:idx+2
+  }}}]});
+}
 
 /* ── CONSTANTES ────────────────────────────────────────────────── */
 const FONTS=[
@@ -108,11 +164,7 @@ function devoContent(entry){try{return JSON.parse(entry.content);}catch{return{}
 function devoPreview(entry){const d=devoContent(entry);return d.gratidao||d.anotacoes||d.leitura||"";}
 
 /* ── DB ────────────────────────────────────────────────────────── */
-function r2e(r){return{id:r.id,date:r.date,content:r.content,tags:r.tags||[],font:r.font,bg:r.bg,fontSize:r.font_size||17,createdAt:r.created_at,type:r.type||"diary"};}
-function e2r(e,uid){return{id:e.id,user_id:uid,date:e.date,content:e.content,tags:e.tags||[],font:e.font,bg:e.bg,font_size:e.fontSize||17,created_at:e.createdAt,type:e.type||"diary"};}
-async function dbLoad(){const{data,error}=await sb.from("diary_entries").select("*").order("date",{ascending:false});if(error)throw error;return(data||[]).map(r2e);}
-async function dbSave(entry,uid){const{error}=await sb.from("diary_entries").upsert(e2r(entry,uid));if(error)throw error;}
-async function dbDelete(id){const{error}=await sb.from("diary_entries").delete().eq("id",id);if(error)throw error;}
+/* db functions defined above with Google Sheets */
 
 /* ── GERAR CANVAS ────────────────────────────────────────────── */
 async function devoToCanvas(entry){
@@ -228,32 +280,33 @@ function Loading(){
 }
 
 /* ── LOGIN ──────────────────────────────────────────────────── */
-function Login({onAuth}){
-  const [mode,sm]=useState("login");const [email,se]=useState("");const [pass,sp]=useState("");const [msg,smsg]=useState("");const [busy,sb2]=useState(false);
-  const go=async()=>{if(!email.trim()||!pass){smsg("Preencha todos os campos.");return;}if(pass.length<6){smsg("Senha deve ter ao menos 6 caracteres.");return;}sb2(true);smsg("");const err=await onAuth(mode,email.trim().toLowerCase(),pass);sb2(false);if(err)smsg(err);};
-  const inp={width:"100%",padding:"13px 16px",border:"1.5px solid #EAE0D8",borderRadius:"14px",fontSize:"15px",fontFamily:"'Lora',serif",color:"#1a1410",background:"#FDFAF7",outline:"none"};
+function Login({onSignIn}){
+  const [busy,sb]=useState(false);
+  const [msg,sm]=useState("");
+  const doSignIn=()=>{
+    if(!window.google){sm("Aguarde o Google carregar e tente novamente.");return;}
+    sb(true);sm("");
+    gTokenClient.requestAccessToken();
+  };
   return(
     <div style={{minHeight:"100vh",background:"linear-gradient(150deg,#FAF7F0 0%,#F0E4D4 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
       <div style={{background:"white",borderRadius:"28px",padding:"48px 40px",width:"100%",maxWidth:"380px",boxShadow:"0 12px 60px rgba(140,100,60,0.13)"}}>
-        <div style={{textAlign:"center",marginBottom:"36px"}}>
+        <div style={{textAlign:"center",marginBottom:"40px"}}>
           <div style={{fontSize:"40px",marginBottom:"12px"}}>🌿</div>
           <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"30px",fontWeight:700,color:"#1a1410",marginBottom:"6px",letterSpacing:"-0.5px"}}>Meu Diário</h1>
-          <p style={{color:"#b5a898",fontSize:"14px",fontStyle:"italic"}}>{mode==="login"?"Bem-vinda de volta":"Crie sua conta privada"}</p>
+          <p style={{color:"#b5a898",fontSize:"14px",fontStyle:"italic"}}>Seu diário pessoal e privado</p>
         </div>
-        <div style={{display:"flex",flexDirection:"column",gap:"12px"}}>
-          <input type="email" placeholder="E-mail" value={email} onChange={e=>{se(e.target.value);smsg("");}} onKeyDown={e=>e.key==="Enter"&&go()} style={inp} autoComplete="email"/>
-          <input type="password" placeholder="Senha (mín. 6 caracteres)" value={pass} onChange={e=>{sp(e.target.value);smsg("");}} onKeyDown={e=>e.key==="Enter"&&go()} style={inp} autoComplete={mode==="login"?"current-password":"new-password"}/>
-          {msg&&<p style={{color:TERRACOTTA,fontSize:"13px",textAlign:"center",lineHeight:1.5}}>{msg}</p>}
-          <button onClick={go} disabled={busy} style={{width:"100%",padding:"14px",background:busy?"#d4a090":TERRACOTTA,color:"white",border:"none",borderRadius:"14px",fontSize:"15px",fontFamily:"'Playfair Display',serif",cursor:busy?"default":"pointer"}}>
-            {busy?<span className="spin">⏳</span>:mode==="login"?"Entrar":"Criar conta"}
-          </button>
-        </div>
-        <p style={{textAlign:"center",marginTop:"20px",fontSize:"13px",color:"#b5a898"}}>
-          {mode==="login"?"Não tem conta? ":"Já tem conta? "}
-          <span onClick={()=>{sm(mode==="login"?"register":"login");smsg("");}} style={{color:TERRACOTTA,cursor:"pointer",textDecoration:"underline"}}>{mode==="login"?"Crie aqui":"Entrar"}</span>
-        </p>
-        {mode==="login"&&<p style={{textAlign:"center",marginTop:"8px",fontSize:"12px"}}><span onClick={async()=>{if(!email.trim()){smsg("Digite seu e-mail primeiro.");return;}sb2(true);const{error}=await sb.auth.resetPasswordForEmail(email.trim());sb2(false);smsg(error?"Erro ao enviar.":"E-mail de redefinição enviado!");}} style={{color:"#b5a898",cursor:"pointer",textDecoration:"underline"}}>Esqueceu a senha?</span></p>}
-        <p style={{textAlign:"center",marginTop:"14px",fontSize:"11px",color:"#d5c8b8"}}>Sincronizado entre todos os seus dispositivos.</p>
+        {msg&&<p style={{color:TERRACOTTA,fontSize:"13px",textAlign:"center",marginBottom:"16px"}}>{msg}</p>}
+        <button onClick={doSignIn} disabled={busy}
+          style={{width:"100%",padding:"14px 20px",background:"white",border:"1.5px solid #EAE0D8",borderRadius:"14px",fontSize:"15px",cursor:busy?"default":"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"12px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",transition:"box-shadow .2s"}}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,0.10)"}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.06)"}>
+          {busy?<span className="spin">⏳</span>:<>
+            <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+            <span style={{fontFamily:"'Lora',serif",color:"#3a2e26",fontSize:"15px"}}>Entrar com Google</span>
+          </>}
+        </button>
+        <p style={{textAlign:"center",marginTop:"20px",fontSize:"11px",color:"#d5c8b8"}}>Seus dados ficam salvos no seu Google Drive.</p>
       </div>
     </div>
   );
@@ -551,7 +604,7 @@ function BackupModal({entries,user,onImport,onClose}){
       if(!data.entries||!Array.isArray(data.entries)){sm("Arquivo inválido.");si(false);return;}
       let count=0;
       for(const entry of data.entries){
-        await dbSave(entry,user.id);count++;
+        await dbSave(entry);count++;
       }
       onImport();
       sm(`✓ ${count} entradas restauradas com sucesso!`);
@@ -1155,18 +1208,33 @@ function App(){
   const vRef=useRef(null);
 
   useEffect(()=>{
-    sb.auth.getSession().then(async({data:{session}})=>{
-      if(session?.user){su(session.user);try{const e=await dbLoad();se(e);}catch(e){console.error(e);}setSCR("diary");}
-      else{setSCR("login");}
-    });
-    const{data:{subscription}}=sb.auth.onAuthStateChange((_ev,session)=>{if(!session)setSCR("login");});
-    return()=>subscription.unsubscribe();
+    const initGoogle=()=>{
+      if(!window.google){setTimeout(initGoogle,200);return;}
+      gTokenClient=google.accounts.oauth2.initTokenClient({
+        client_id:CLIENT_ID,
+        scope:SCOPES,
+        callback:async(resp)=>{
+          if(resp.error){setSCR("login");return;}
+          gAccessToken=resp.access_token;
+          try{
+            // Get user info
+            const ui=await fetch("https://www.googleapis.com/oauth2/v3/userinfo",
+              {headers:{Authorization:`Bearer ${gAccessToken}`}}).then(r=>r.json());
+            su(ui);
+            // Init sheet and load entries
+            await initSheet();
+            const ents=await dbLoad();
+            se(ents);
+            setSCR("diary");
+          }catch(err){console.error(err);setSCR("login");}
+        }
+      });
+      setSCR("login");
+    };
+    initGoogle();
   },[]);
 
-  const auth=async(mode,email,pass)=>{
-    if(mode==="register"){const{data,error}=await sb.auth.signUp({email,password:pass});if(error)return error.message;if(data.user&&!data.session)return"Confirme seu e-mail para ativar a conta.";su(data.user);se([]);setSCR("diary");return null;}
-    else{const{data,error}=await sb.auth.signInWithPassword({email,password:pass});if(error)return"E-mail ou senha incorretos.";su(data.user);try{const e=await dbLoad();se(e);}catch(e){console.error(e);}setSCR("diary");return null;}
-  };
+  /* auth handled by Google token callback in useEffect */
 
   const openEd=(entry=null,date=new Date(),frase=false)=>{
     sIF(frase);
@@ -1178,18 +1246,18 @@ function App(){
   const saveEntry=async()=>{
     if(!ec.trim())return;ssav(true);
     const entry={id:edit?edit.id:Date.now().toString(),date:selDate.toISOString(),content:ec,tags:et,font:ef,bg:ebg,fontSize:efz,createdAt:edit?edit.createdAt:new Date().toISOString(),type:isFrase?"frase":"diary"};
-    try{await dbSave(entry,user.id);const ne=edit?entries.map(x=>x.id===entry.id?entry:x):[...entries,entry];se(ne);sse(entry);if(mob)sme(true);setSCR("diary");}
+    try{await dbSave(entry);const ne=edit?entries.map(x=>x.id===entry.id?entry:x):[...entries,entry];se(ne);sse(entry);if(mob)sme(true);setSCR("diary");}
     catch(e){alert("Erro ao salvar: "+e.message);}
     ssav(false);
   };
 
   const saveFrase=async(entry)=>{
-    try{await dbSave(entry,user.id);se(prev=>prev.some(x=>x.id===entry.id)?prev.map(x=>x.id===entry.id?entry:x):[...prev,entry]);}
+    try{await dbSave(entry);se(prev=>prev.some(x=>x.id===entry.id)?prev.map(x=>x.id===entry.id?entry:x):[...prev,entry]);}
     catch(e){alert("Erro ao salvar: "+e.message);}
   };
 
   const saveDevo=async(entry)=>{
-    try{await dbSave(entry,user.id);se(prev=>prev.some(x=>x.id===entry.id)?prev.map(x=>x.id===entry.id?entry:x):[...prev,entry]);sSDE(false);}
+    try{await dbSave(entry);se(prev=>prev.some(x=>x.id===entry.id)?prev.map(x=>x.id===entry.id?entry:x):[...prev,entry]);sSDE(false);}
     catch(e){alert("Erro ao salvar: "+e.message);}
   };
 
@@ -1204,11 +1272,14 @@ function App(){
     catch{alert("Erro ao gerar imagem.");}
   };
 
-  const logout=async()=>{await sb.auth.signOut();su(null);se([]);sse(null);setSCR("login");};
+  const logout=()=>{
+    if(gAccessToken&&window.google)google.accounts.oauth2.revoke(gAccessToken,()=>{});
+    gAccessToken=null;su(null);se([]);sse(null);setSCR("login");
+  };
   const reloadEntries=async()=>{try{const e=await dbLoad();se(e);}catch(e){console.error(e);}};
 
   if(scr==="loading")return<Loading/>;
-  if(scr==="login")return<Login onAuth={auth}/>;
+  if(scr==="login")return<Login onSignIn={()=>gTokenClient&&gTokenClient.requestAccessToken()}/>;
   if(showDevoEd)return(
     <DevoEditor entry={devoEdit} user={user} onSave={async(e)=>{await saveDevo(e);}} onCancel={()=>sSDE(false)} mob={mob}/>
   );
