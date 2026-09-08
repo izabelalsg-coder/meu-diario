@@ -1319,23 +1319,23 @@ function LivroCard({livro,onClick,active}){
       {livro.cover?(
         <img src={livro.cover} alt="" style={{width:"42px",height:"58px",objectFit:"cover",borderRadius:"6px",flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,0.12)"}}/>
       ):(
-        <div style={{width:"42px",height:"58px",borderRadius:"6px",flexShrink:0,background:"#F5EDE0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px"}}>{livro.format==="audiolivro"?"🎧":"📘"}</div>
+        <div style={{width:"42px",height:"58px",borderRadius:"6px",flexShrink:0,background:"#F5EDE0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px"}}>{livro.format==="audiolivro"?"🎧":"📘"}</div>
       )}
       <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"}}>
           <div style={{flex:1,minWidth:0}}>
-            <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.title||"Sem título"}</p>
-            <p style={{fontSize:"12px",color:"#8a7d70",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.author||"Autor desconhecido"}</p>
+            <p style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.title||"Sem título"}</p>
+            <p style={{fontSize:"14px",color:"#8a7d70",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.author||"Autor desconhecido"}</p>
           </div>
-          {livro.cover&&<span style={{fontSize:"14px",flexShrink:0}}>{livro.format==="audiolivro"?"🎧":"📘"}</span>}
+          {livro.cover&&<span style={{fontSize:"16px",flexShrink:0}}>{livro.format==="audiolivro"?"🎧":"📘"}</span>}
         </div>
         <div style={{display:"flex",gap:"6px",alignItems:"center",marginTop:"8px",flexWrap:"wrap"}}>
-          <span style={{fontSize:"10px",fontWeight:700,color:"white",background:st.color,borderRadius:"8px",padding:"3px 9px"}}>{st.label}</span>
-          {livro.category&&<span style={{fontSize:"10px",color:"#8a7d70",background:"#F5EDE0",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
-          {livro.rating>0&&<span style={{fontSize:"11px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
-          {livro.mood&&(()=>{const m=LIVRO_MOODS.find(x=>x.k===livro.mood);return m?<span title={m.label} style={{fontSize:"12px"}}>{m.emoji}</span>:null;})()}
-          {livro.format==="fisico"&&livro.pages>0&&<span style={{fontSize:"10px",color:"#a89a8a"}}>{livro.pages}p</span>}
-          {livro.format==="audiolivro"&&livro.durationMin>0&&<span style={{fontSize:"10px",color:"#a89a8a"}}>{Math.floor(livro.durationMin/60)}h{String(livro.durationMin%60).padStart(2,"0")}</span>}
+          <span style={{fontSize:"12px",fontWeight:700,color:"white",background:st.color,borderRadius:"8px",padding:"3px 9px"}}>{st.label}</span>
+          {livro.category&&<span style={{fontSize:"12px",color:"#8a7d70",background:"#F5EDE0",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
+          {livro.rating>0&&<span style={{fontSize:"13px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
+          {livro.mood&&(()=>{const m=LIVRO_MOODS.find(x=>x.k===livro.mood);return m?<span title={m.label} style={{fontSize:"14px"}}>{m.emoji}</span>:null;})()}
+          {livro.format==="fisico"&&livro.pages>0&&<span style={{fontSize:"12px",color:"#a89a8a"}}>{livro.pages}p</span>}
+          {livro.format==="audiolivro"&&livro.durationMin>0&&<span style={{fontSize:"12px",color:"#a89a8a"}}>{Math.floor(livro.durationMin/60)}h{String(livro.durationMin%60).padStart(2,"0")}</span>}
         </div>
       </div>
     </div>
@@ -1370,8 +1370,8 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
   const[saving,ssav]=useState(false);
   const fileRef=useRef(null);
 
-  const lbl={fontSize:"11px",color:"#8a7d70",fontWeight:600,marginBottom:"5px",display:"block"};
-  const inp={width:"100%",padding:"10px 12px",border:"1px solid #EDE5DC",borderRadius:"10px",fontSize:"14px",fontFamily:"'Lora',serif",background:"#FAF7F0",marginBottom:"14px"};
+  const lbl={fontSize:"13px",color:"#8a7d70",fontWeight:600,marginBottom:"5px",display:"block"};
+  const inp={width:"100%",padding:"10px 12px",border:"1px solid #EDE5DC",borderRadius:"10px",fontSize:"16px",fontFamily:"'Lora',serif",background:"#FAF7F0",marginBottom:"14px"};
 
   const addCategory=()=>{
     const v=newCat.trim();
@@ -1410,14 +1410,14 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       <label style={lbl}>Capa do livro</label>
       <div style={{display:"flex",gap:"14px",alignItems:"center",marginBottom:"16px"}}>
         <div style={{width:"64px",height:"90px",borderRadius:"8px",background:"#F5EDE0",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",boxShadow:cover?"0 3px 10px rgba(0,0,0,0.15)":"none"}}>
-          {cover?<img src={cover} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:"24px",color:"#d5c8b8"}}>📷</span>}
+          {cover?<img src={cover} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:"26px",color:"#d5c8b8"}}>📷</span>}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleCoverFile} style={{display:"none"}}/>
-          <button onClick={()=>fileRef.current?.click()} disabled={coverBusy} style={{padding:"8px 14px",background:"#F5EDE0",border:"none",borderRadius:"10px",fontSize:"12px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>
+          <button onClick={()=>fileRef.current?.click()} disabled={coverBusy} style={{padding:"8px 14px",background:"#F5EDE0",border:"none",borderRadius:"10px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>
             {coverBusy?"Processando…":cover?"Trocar foto":"Adicionar foto"}
           </button>
-          {cover&&<button onClick={()=>sCover("")} style={{padding:"6px 14px",background:"none",border:"none",borderRadius:"10px",fontSize:"11px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Remover foto</button>}
+          {cover&&<button onClick={()=>sCover("")} style={{padding:"6px 14px",background:"none",border:"none",borderRadius:"10px",fontSize:"13px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Remover foto</button>}
         </div>
       </div>
 
@@ -1445,7 +1445,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
           ):(
             <div style={{display:"flex",gap:"6px",marginBottom:"14px"}}>
               <input autoFocus style={{...inp,marginBottom:0}} value={newCat} onChange={e=>sNC(e.target.value)} placeholder="Nome da categoria" onKeyDown={e=>e.key==="Enter"&&addCategory()}/>
-              <button onClick={addCategory} style={{padding:"0 14px",background:SAGE,border:"none",borderRadius:"10px",color:"white",fontSize:"13px",cursor:"pointer"}}>OK</button>
+              <button onClick={addCategory} style={{padding:"0 14px",background:SAGE,border:"none",borderRadius:"10px",color:"white",fontSize:"15px",cursor:"pointer"}}>OK</button>
             </div>
           )}
         </div>
@@ -1453,7 +1453,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
           <label style={lbl}>Formato</label>
           <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
             {[{k:"fisico",label:"📘 Físico"},{k:"audiolivro",label:"🎧 Áudio"}].map(f=>(
-              <button key={f.k} onClick={()=>sF(f.k)} style={{flex:1,padding:"10px 6px",borderRadius:"10px",border:"1px solid #EDE5DC",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",background:format===f.k?TERRACOTTA:"#FAF7F0",color:format===f.k?"white":"#6a5a4a"}}>{f.label}</button>
+              <button key={f.k} onClick={()=>sF(f.k)} style={{flex:1,padding:"10px 6px",borderRadius:"10px",border:"1px solid #EDE5DC",cursor:"pointer",fontSize:"15px",fontFamily:"'Lora',serif",background:format===f.k?TERRACOTTA:"#FAF7F0",color:format===f.k?"white":"#6a5a4a"}}>{f.label}</button>
             ))}
           </div>
         </div>
@@ -1462,7 +1462,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       <label style={lbl}>Status</label>
       <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
         {LIVRO_STATUS.map(s=>(
-          <button key={s.k} onClick={()=>sS(s.k)} style={{flex:1,padding:"9px 6px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",fontWeight:status===s.k?700:400,background:status===s.k?s.color:"#F5EDE0",color:status===s.k?"white":"#8a7d70"}}>{s.label}</button>
+          <button key={s.k} onClick={()=>sS(s.k)} style={{flex:1,padding:"9px 6px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Lora',serif",fontWeight:status===s.k?700:400,background:status===s.k?s.color:"#F5EDE0",color:status===s.k?"white":"#8a7d70"}}>{s.label}</button>
         ))}
       </div>
 
@@ -1490,14 +1490,14 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       <label style={lbl}>Avaliação</label>
       <div style={{display:"flex",gap:"4px",marginBottom:"14px"}}>
         {[1,2,3,4,5].map(n=>(
-          <span key={n} onClick={()=>sR(rating===n?0:n)} style={{fontSize:"24px",cursor:"pointer",color:n<=rating?AMBER:"#e0d4c8"}}>★</span>
+          <span key={n} onClick={()=>sR(rating===n?0:n)} style={{fontSize:"26px",cursor:"pointer",color:n<=rating?AMBER:"#e0d4c8"}}>★</span>
         ))}
       </div>
 
       <label style={lbl}>Como essa leitura te fez sentir</label>
       <div style={{display:"flex",gap:"6px",marginBottom:"14px",flexWrap:"wrap"}}>
         {LIVRO_MOODS.map(m=>(
-          <button key={m.k} onClick={()=>sMood(mood===m.k?"":m.k)} style={{padding:"7px 11px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",background:mood===m.k?m.color:"#F5EDE0",color:"#5a4d40"}}>{m.emoji} {m.label}</button>
+          <button key={m.k} onClick={()=>sMood(mood===m.k?"":m.k)} style={{padding:"7px 11px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Lora',serif",background:mood===m.k?m.color:"#F5EDE0",color:"#5a4d40"}}>{m.emoji} {m.label}</button>
         ))}
       </div>
 
@@ -1505,9 +1505,9 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       <textarea style={{...inp,minHeight:"90px",resize:"vertical"}} value={notes} onChange={e=>sN(e.target.value)} placeholder="O que você achou, o que aprendeu..."/>
 
       <div style={{display:"flex",gap:"10px",marginTop:"6px"}}>
-        <button onClick={onCancel} style={{flex:1,padding:"12px",background:"#F5EDE0",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>Cancelar</button>
-        {livro&&<button onClick={()=>onDelete(livro.id)} style={{padding:"12px 16px",background:"#F8E0E0",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Excluir</button>}
-        <button onClick={save} disabled={saving} style={{flex:1,padding:"12px",background:SAGE,border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white",opacity:saving?0.7:1}}>{saving?"Salvando…":"Salvar"}</button>
+        <button onClick={onCancel} style={{flex:1,padding:"12px",background:"#F5EDE0",border:"none",borderRadius:"12px",fontSize:"16px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>Cancelar</button>
+        {livro&&<button onClick={()=>onDelete(livro.id)} style={{padding:"12px 16px",background:"#F8E0E0",border:"none",borderRadius:"12px",fontSize:"16px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Excluir</button>}
+        <button onClick={save} disabled={saving} style={{flex:1,padding:"12px",background:SAGE,border:"none",borderRadius:"12px",fontSize:"16px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white",opacity:saving?0.7:1}}>{saving?"Salvando…":"Salvar"}</button>
       </div>
     </div>
   );
@@ -1518,7 +1518,7 @@ function LivroShelf({livros,onClick,sel}){
   if(livros.length===0)return(
     <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
       <div style={{fontSize:"36px",marginBottom:"8px"}}>📚</div>
-      <p style={{fontSize:"13px"}}>Nenhum livro por aqui ainda.</p>
+      <p style={{fontSize:"15px"}}>Nenhum livro por aqui ainda.</p>
     </div>
   );
   return(
@@ -1532,14 +1532,14 @@ function LivroShelf({livros,onClick,sel}){
               style={{width:w+"px",height:h+"px",background:l.cardColor?shiftColor(l.cardColor):"#D8C8B0",
                 borderRadius:"3px 3px 0 0",cursor:"pointer",boxShadow:sel?.id===l.id?`0 0 0 2px ${TERRACOTTA}`:"inset -3px 0 5px rgba(0,0,0,0.12)",
                 display:"flex",alignItems:"center",justifyContent:"center",writingMode:"vertical-rl",
-                fontSize:"10px",color:"#5a4d40",overflow:"hidden",padding:"4px 0",fontFamily:"'Lora',serif"}}>
+                fontSize:"12px",color:"#5a4d40",overflow:"hidden",padding:"4px 0",fontFamily:"'Lora',serif"}}>
               {l.title.length>16?l.title.slice(0,15)+"…":l.title}
             </div>
           );
         })}
       </div>
       <div style={{height:"12px",background:"linear-gradient(180deg,#D9C3A3,#C4A578)",borderRadius:"0 0 6px 6px",boxShadow:"0 3px 6px rgba(0,0,0,0.12)"}}/>
-      <p style={{textAlign:"center",fontSize:"11px",color:"#c5b8a8",padding:"8px 0 0",fontStyle:"italic"}}>toque numa lombada para abrir o livro</p>
+      <p style={{textAlign:"center",fontSize:"13px",color:"#c5b8a8",padding:"8px 0 0",fontStyle:"italic"}}>toque numa lombada para abrir o livro</p>
     </div>
   );
 }
@@ -1556,19 +1556,19 @@ function LivroMoodMap({livros}){
   if(lidos.length===0)return(
     <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
       <div style={{fontSize:"36px",marginBottom:"8px"}}>🕊️</div>
-      <p style={{fontSize:"13px"}}>Nenhuma leitura concluída registrada ainda.</p>
-      <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Marque livros como "Concluído" e registre como eles te fizeram sentir.</p>
+      <p style={{fontSize:"15px"}}>Nenhuma leitura concluída registrada ainda.</p>
+      <p style={{fontSize:"14px",marginTop:"4px",color:"#e0d4c8"}}>Marque livros como "Concluído" e registre como eles te fizeram sentir.</p>
     </div>
   );
   return(
     <div style={{padding:"14px"}}>
-      <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Como suas leituras concluídas te fizeram sentir, em ordem cronológica.</p>
+      <p style={{fontSize:"14px",color:"#8a7d70",marginBottom:"12px"}}>Como suas leituras concluídas te fizeram sentir, em ordem cronológica.</p>
       <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"20px"}}>
         {lidos.map(l=>{
           const m=LIVRO_MOODS.find(x=>x.k===l.mood);
           return(
             <div key={l.id} title={l.title} style={{width:"38px",height:"38px",borderRadius:"10px",background:m?m.color:"#EDE5DC",
-              display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",cursor:"default"}}>
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",cursor:"default"}}>
               {m?m.emoji:"·"}
             </div>
           );
@@ -1581,8 +1581,8 @@ function LivroMoodMap({livros}){
           return(
             <div key={m.k} style={{display:"flex",alignItems:"center",gap:"8px"}}>
               <div style={{width:"16px",height:"16px",borderRadius:"5px",background:m.color,flexShrink:0}}/>
-              <span style={{fontSize:"12px",color:"#6a5a4a"}}>{m.emoji} {m.label}</span>
-              <span style={{fontSize:"11px",color:"#c5b8a8"}}>({count})</span>
+              <span style={{fontSize:"14px",color:"#6a5a4a"}}>{m.emoji} {m.label}</span>
+              <span style={{fontSize:"13px",color:"#c5b8a8"}}>({count})</span>
             </div>
           );
         })}
@@ -1597,7 +1597,7 @@ function BarRow({label,value,max,color,suffix}){
   const pct=max>0?Math.max(3,(value/max)*100):0;
   return(
     <div style={{marginBottom:"10px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:"11px",color:"#6a5a4a",marginBottom:"3px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:"13px",color:"#6a5a4a",marginBottom:"3px"}}>
         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{label}</span>
         <span style={{color:"#a89a8a"}}>{value}{suffix||""}</span>
       </div>
@@ -1659,14 +1659,14 @@ function LivroDashboard({livros}){
   const maxAut=Math.max(1,...autores.map(a=>a[1]));
   const maxForm=Math.max(1,...formatos.map(f=>f.v));
 
-  const sec={fontFamily:"'Playfair Display',serif",fontSize:"13px",color:"#6a5a4a",marginBottom:"10px"};
+  const sec={fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#6a5a4a",marginBottom:"10px"};
   const card={background:"white",border:"1px solid #EDE5DC",borderRadius:"14px",padding:"16px",marginBottom:"14px"};
 
   return(
     <div style={{padding:"18px 20px",overflowY:"auto",flex:1}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
-        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"19px",color:"#1a1410"}}>Resumo do ano</h2>
-        <select value={ano} onChange={e=>sAno(parseInt(e.target.value))} style={{padding:"7px 12px",borderRadius:"9px",border:"1px solid #EDE5DC",fontSize:"13px",fontFamily:"'Lora',serif",background:"#FAF7F0"}}>
+        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"21px",color:"#1a1410"}}>Resumo do ano</h2>
+        <select value={ano} onChange={e=>sAno(parseInt(e.target.value))} style={{padding:"7px 12px",borderRadius:"9px",border:"1px solid #EDE5DC",fontSize:"15px",fontFamily:"'Lora',serif",background:"#FAF7F0"}}>
           {(anos.length?anos:[anoAtual]).map(a=><option key={a} value={a}>{a}</option>)}
         </select>
       </div>
@@ -1674,30 +1674,30 @@ function LivroDashboard({livros}){
       {doAno.length===0?(
         <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
           <div style={{fontSize:"36px",marginBottom:"8px"}}>📊</div>
-          <p style={{fontSize:"13px"}}>Nenhuma leitura concluída em {ano} ainda.</p>
+          <p style={{fontSize:"15px"}}>Nenhuma leitura concluída em {ano} ainda.</p>
         </div>
       ):(
         <>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"18px"}}>
             <div style={{...card,marginBottom:0,textAlign:"center"}}>
-              <div style={{fontSize:"22px"}}>📚</div>
-              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{doAno.length}</p>
-              <p style={{fontSize:"11px",color:"#a89a8a"}}>livros concluídos</p>
+              <div style={{fontSize:"24px"}}>📚</div>
+              <p style={{fontSize:"22px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{doAno.length}</p>
+              <p style={{fontSize:"13px",color:"#a89a8a"}}>livros concluídos</p>
             </div>
             <div style={{...card,marginBottom:0,textAlign:"center"}}>
-              <div style={{fontSize:"22px"}}>📄</div>
-              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{totalPaginas.toLocaleString("pt-BR")}</p>
-              <p style={{fontSize:"11px",color:"#a89a8a"}}>páginas</p>
+              <div style={{fontSize:"24px"}}>📄</div>
+              <p style={{fontSize:"22px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{totalPaginas.toLocaleString("pt-BR")}</p>
+              <p style={{fontSize:"13px",color:"#a89a8a"}}>páginas</p>
             </div>
             <div style={{...card,marginBottom:0,textAlign:"center"}}>
-              <div style={{fontSize:"22px"}}>⏱️</div>
-              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{totalHoras}h</p>
-              <p style={{fontSize:"11px",color:"#a89a8a"}}>de leitura em áudio</p>
+              <div style={{fontSize:"24px"}}>⏱️</div>
+              <p style={{fontSize:"22px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{totalHoras}h</p>
+              <p style={{fontSize:"13px",color:"#a89a8a"}}>de leitura em áudio</p>
             </div>
             <div style={{...card,marginBottom:0,textAlign:"center"}}>
-              <div style={{fontSize:"22px"}}>🔥</div>
-              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{sequencia}</p>
-              <p style={{fontSize:"11px",color:"#a89a8a"}}>dias entre a 1ª e a última leitura</p>
+              <div style={{fontSize:"24px"}}>🔥</div>
+              <p style={{fontSize:"22px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{sequencia}</p>
+              <p style={{fontSize:"13px",color:"#a89a8a"}}>dias entre a 1ª e a última leitura</p>
             </div>
           </div>
 
@@ -1713,7 +1713,7 @@ function LivroDashboard({livros}){
 
           <div style={card}>
             <p style={sec}>Gêneros mais lidos</p>
-            {generos.length===0?<p style={{fontSize:"12px",color:"#c5b8a8"}}>Sem categorias registradas.</p>:
+            {generos.length===0?<p style={{fontSize:"14px",color:"#c5b8a8"}}>Sem categorias registradas.</p>:
               generos.map(([k,v])=><BarRow key={k} label={k} value={v} max={maxGen} color={LILAC}/>)}
           </div>
 
@@ -1759,23 +1759,23 @@ function LivrosSection({livros,onSave,onDel,mob}){
       <div style={{width:mob?"100%":"320px",minWidth:mob?"100%":"320px",display:mob&&(editing||showDash)?"none":"flex",flexDirection:"column",borderRight:mob?"none":"1px solid #EDE5DC",background:"white",overflow:"hidden"}}>
         <div style={{padding:"18px 18px 12px",borderBottom:"1px solid #EDE5DC",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#1a1410"}}>📚 Leituras</h2>
-            <p style={{fontSize:"11px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
+            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"19px",color:"#1a1410"}}>📚 Leituras</h2>
+            <p style={{fontSize:"13px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
           </div>
           <div style={{display:"flex",gap:"6px"}}>
-            <button onClick={()=>{se_(false);ss(null);sDash(true);}} title="Resumo do ano" style={{background:"#F5EDE0",color:"#6a5a4a",border:"none",borderRadius:"10px",padding:"7px 10px",fontSize:"12px",cursor:"pointer"}}>📊</button>
-            <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
+            <button onClick={()=>{se_(false);ss(null);sDash(true);}} title="Resumo do ano" style={{background:"#F5EDE0",color:"#6a5a4a",border:"none",borderRadius:"10px",padding:"7px 10px",fontSize:"14px",cursor:"pointer"}}>📊</button>
+            <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
           </div>
         </div>
         <div style={{display:"flex",gap:"5px",padding:"10px 14px 0"}}>
           {[{k:"lista",label:"📋 Lista"},{k:"estante",label:"📚 Estante"},{k:"humor",label:"🕊️ Humor"}].map(v=>(
-            <button key={v.k} onClick={()=>sv(v.k)} style={{flex:1,padding:"6px 4px",borderRadius:"9px",border:"none",cursor:"pointer",fontSize:"11px",fontFamily:"'Lora',serif",fontWeight:view===v.k?700:400,background:view===v.k?TERRACOTTA:"#F5EDE0",color:view===v.k?"white":"#8a7d70"}}>{v.label}</button>
+            <button key={v.k} onClick={()=>sv(v.k)} style={{flex:1,padding:"6px 4px",borderRadius:"9px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:view===v.k?700:400,background:view===v.k?TERRACOTTA:"#F5EDE0",color:view===v.k?"white":"#8a7d70"}}>{v.label}</button>
           ))}
         </div>
         {view!=="humor"&&(
           <div style={{display:"flex",gap:"5px",padding:"10px 14px 0",flexWrap:"wrap"}}>
             {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
-              <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70"}}>{s.label} ({counts[s.k]})</span>
+              <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"13px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70"}}>{s.label} ({counts[s.k]})</span>
             ))}
           </div>
         )}
@@ -1783,8 +1783,8 @@ function LivrosSection({livros,onSave,onDel,mob}){
           {view==="lista"&&(filtered.length===0?(
             <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
               <div style={{fontSize:"36px",marginBottom:"8px"}}>📚</div>
-              <p style={{fontSize:"13px"}}>Nenhum livro por aqui ainda.</p>
-              <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Clique em "+ Novo" para registrar uma leitura.</p>
+              <p style={{fontSize:"15px"}}>Nenhum livro por aqui ainda.</p>
+              <p style={{fontSize:"14px",marginTop:"4px",color:"#e0d4c8"}}>Clique em "+ Novo" para registrar uma leitura.</p>
             </div>
           ):filtered.map(l=><LivroCard key={l.id} livro={l} active={sel?.id===l.id} onClick={()=>openEdit(l)}/>))}
           {view==="estante"&&<LivroShelf livros={filtered} onClick={openEdit} sel={sel}/>}
@@ -1797,22 +1797,22 @@ function LivrosSection({livros,onSave,onDel,mob}){
           {editing?(
             <>
               {mob&&<div style={{padding:"14px 18px",borderBottom:"1px solid #EDE5DC",flexShrink:0}}>
-                <button onClick={()=>{se_(false);ss(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:"13px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
+                <button onClick={()=>{se_(false);ss(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:"15px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
               </div>}
               <LivroForm livro={sel} onSave={handleSave} onCancel={()=>{se_(false);ss(null);}} onDelete={handleDel}/>
             </>
           ):showDash?(
             <>
               {mob&&<div style={{padding:"14px 18px",borderBottom:"1px solid #EDE5DC",flexShrink:0}}>
-                <button onClick={()=>sDash(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"13px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
+                <button onClick={()=>sDash(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"15px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
               </div>}
               <LivroDashboard livros={livros}/>
             </>
           ):(
             <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px",color:"#d5c8b8"}}>
               <div style={{fontSize:"48px"}}>📚</div>
-              <p style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#b5a898"}}>Selecione um livro</p>
-              <button onClick={openNew} style={{marginTop:"10px",background:SAGE,color:"white",border:"none",borderRadius:"14px",padding:"11px 26px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>Registrar leitura</button>
+              <p style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#b5a898"}}>Selecione um livro</p>
+              <button onClick={openNew} style={{marginTop:"10px",background:SAGE,color:"white",border:"none",borderRadius:"14px",padding:"11px 26px",fontSize:"16px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>Registrar leitura</button>
             </div>
           )}
         </div>
