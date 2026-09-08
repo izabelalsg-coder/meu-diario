@@ -137,8 +137,8 @@ async function ensureLivrosSheet(){
   }
   const head = await sheetsReq(`/values/${LIVROS_SHEET}!A1:A1`);
   if(!(head.values&&head.values[0]&&head.values[0][0]==="id")){
-    await sheetsReq(`/values/${LIVROS_SHEET}!A1:M1?valueInputOption=RAW`,"PUT",
-      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt","cover"]]});
+    await sheetsReq(`/values/${LIVROS_SHEET}!A1:N1?valueInputOption=RAW`,"PUT",
+      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt","cover","cardColor"]]});
   }
   livrosSheetReady=true;
 }
@@ -146,16 +146,17 @@ async function ensureLivrosSheet(){
 function rowToLivro(r){
   return{id:r[0],title:r[1]||"",author:r[2]||"",category:r[3]||"",format:r[4]||"fisico",
     status:r[5]||"lendo",rating:parseInt(r[6])||0,startDate:r[7]||"",endDate:r[8]||"",
-    quote:r[9]||"",notes:r[10]||"",createdAt:r[11]||new Date().toISOString(),cover:r[12]||""};
+    quote:r[9]||"",notes:r[10]||"",createdAt:r[11]||new Date().toISOString(),cover:r[12]||"",
+    cardColor:r[13]||""};
 }
 function livroToRow(b){
   return[b.id,b.title,b.author,b.category,b.format||"fisico",b.status||"lendo",b.rating||0,
-    b.startDate||"",b.endDate||"",b.quote||"",b.notes||"",b.createdAt,b.cover||""];
+    b.startDate||"",b.endDate||"",b.quote||"",b.notes||"",b.createdAt,b.cover||"",b.cardColor||""];
 }
 
 async function dbLoadLivros(){
   await ensureLivrosSheet();
-  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:M`);
+  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:N`);
   return (d.values||[]).filter(r=>r[0]).map(rowToLivro).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 }
 
@@ -169,7 +170,7 @@ async function dbSaveLivro(livro){
       {values:[livroToRow(livro)]});
   }else{
     const row = idx+2;
-    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:M${row}?valueInputOption=RAW`,"PUT",
+    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:N${row}?valueInputOption=RAW`,"PUT",
       {values:[livroToRow(livro)]});
   }
 }
@@ -278,6 +279,8 @@ function saveCustomCats(list){
 }
 function emailName(e){return e?e.split("@")[0]:"";}
 function getRandomPastel(){return PASTEL_COLORS[Math.floor(Math.random()*PASTEL_COLORS.length)];}
+const LIVRO_PASTELS=["#FDF3E7","#FCEEF3","#EEF5EC","#EAF2F8","#F3EEF9","#FBF6E3","#F0F7F4","#FBEEEE"];
+function getRandomLivroPastel(){return LIVRO_PASTELS[Math.floor(Math.random()*LIVRO_PASTELS.length)];}
 function devoContent(entry){try{return JSON.parse(entry.content);}catch{return{};}}
 function devoPreview(entry){const d=devoContent(entry);return d.gratidao||d.anotacoes||d.leitura||"";}
 
@@ -834,7 +837,7 @@ function BackupModal({entries,livros,user,onImport,onClose}){
           for(const b of updateLivros){
             const idx=lrows.findIndex(r=>r[0]===b.id);
             if(idx!==-1){
-              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:M${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
+              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:N${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
             }
           }
         }
@@ -1301,8 +1304,9 @@ function DevoSection({entries,user,onSave,onDel,openEditor,mob}){
 /* ── LIVROS: CARD ───────────────────────────────────────────── */
 function LivroCard({livro,onClick,active}){
   const st=LIVRO_STATUS.find(s=>s.k===livro.status)||LIVRO_STATUS[1];
+  const bg=livro.cardColor||"#FFFFFF";
   return(
-    <div onClick={onClick} style={{background:active?"#F5EDE0":"white",border:`1px solid ${active?TERRACOTTA:"#EDE5DC"}`,borderRadius:"14px",padding:"14px",marginBottom:"10px",cursor:"pointer",transition:"all .15s",display:"flex",gap:"12px"}}>
+    <div onClick={onClick} style={{background:bg,border:`1px solid ${active?TERRACOTTA:"rgba(0,0,0,0.06)"}`,boxShadow:active?"none":"0 1px 4px rgba(0,0,0,0.04)",borderRadius:"14px",padding:"14px",marginBottom:"10px",cursor:"pointer",transition:"all .15s",display:"flex",gap:"12px"}}>
       {livro.cover?(
         <img src={livro.cover} alt="" style={{width:"42px",height:"58px",objectFit:"cover",borderRadius:"6px",flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,0.12)"}}/>
       ):(
@@ -1347,6 +1351,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
   const[notes,sN]=useState(livro?.notes||"");
   const[cover,sCover]=useState(livro?.cover||"");
   const[coverBusy,sCB]=useState(false);
+  const[cardColor,sCC]=useState(livro?.cardColor||getRandomLivroPastel());
   const[saving,ssav]=useState(false);
   const fileRef=useRef(null);
 
@@ -1376,7 +1381,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
     if(!title.trim()){alert("Digite ao menos o título do livro.");return;}
     ssav(true);
     const entry={id:livro?livro.id:Date.now().toString(),title:title.trim(),author:author.trim(),category,format,status,
-      rating,startDate,endDate,quote,notes,cover,createdAt:livro?livro.createdAt:new Date().toISOString()};
+      rating,startDate,endDate,quote,notes,cover,cardColor,createdAt:livro?livro.createdAt:new Date().toISOString()};
     try{await onSave(entry);}
     catch(e){alert("Erro ao salvar: "+e.message);}
     ssav(false);
@@ -1396,6 +1401,13 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
           </button>
           {cover&&<button onClick={()=>sCover("")} style={{padding:"6px 14px",background:"none",border:"none",borderRadius:"10px",fontSize:"11px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Remover foto</button>}
         </div>
+      </div>
+
+      <label style={lbl}>Cor de fundo do card</label>
+      <div style={{display:"flex",gap:"8px",marginBottom:"16px",flexWrap:"wrap"}}>
+        {LIVRO_PASTELS.map(c=>(
+          <button key={c} onClick={()=>sCC(c)} title={c} style={{width:"26px",height:"26px",borderRadius:"50%",background:c,padding:0,flexShrink:0,border:cardColor===c?`2.5px solid ${TERRACOTTA}`:"1.5px solid rgba(0,0,0,0.10)",cursor:"pointer"}}/>
+        ))}
       </div>
 
       <label style={lbl}>Título</label>
