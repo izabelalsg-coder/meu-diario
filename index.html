@@ -137,8 +137,8 @@ async function ensureLivrosSheet(){
   }
   const head = await sheetsReq(`/values/${LIVROS_SHEET}!A1:A1`);
   if(!(head.values&&head.values[0]&&head.values[0][0]==="id")){
-    await sheetsReq(`/values/${LIVROS_SHEET}!A1:N1?valueInputOption=RAW`,"PUT",
-      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt","cover","cardColor"]]});
+    await sheetsReq(`/values/${LIVROS_SHEET}!A1:P1?valueInputOption=RAW`,"PUT",
+      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt","cover","cardColor","mood","extent"]]});
   }
   livrosSheetReady=true;
 }
@@ -147,16 +147,17 @@ function rowToLivro(r){
   return{id:r[0],title:r[1]||"",author:r[2]||"",category:r[3]||"",format:r[4]||"fisico",
     status:r[5]||"lendo",rating:parseInt(r[6])||0,startDate:r[7]||"",endDate:r[8]||"",
     quote:r[9]||"",notes:r[10]||"",createdAt:r[11]||new Date().toISOString(),cover:r[12]||"",
-    cardColor:r[13]||""};
+    cardColor:r[13]||"",mood:r[14]||"",extent:r[15]||""};
 }
 function livroToRow(b){
   return[b.id,b.title,b.author,b.category,b.format||"fisico",b.status||"lendo",b.rating||0,
-    b.startDate||"",b.endDate||"",b.quote||"",b.notes||"",b.createdAt,b.cover||"",b.cardColor||""];
+    b.startDate||"",b.endDate||"",b.quote||"",b.notes||"",b.createdAt,b.cover||"",b.cardColor||"",
+    b.mood||"",b.extent||""];
 }
 
 async function dbLoadLivros(){
   await ensureLivrosSheet();
-  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:N`);
+  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:P`);
   return (d.values||[]).filter(r=>r[0]).map(rowToLivro).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 }
 
@@ -170,7 +171,7 @@ async function dbSaveLivro(livro){
       {values:[livroToRow(livro)]});
   }else{
     const row = idx+2;
-    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:N${row}?valueInputOption=RAW`,"PUT",
+    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:P${row}?valueInputOption=RAW`,"PUT",
       {values:[livroToRow(livro)]});
   }
 }
@@ -224,6 +225,14 @@ const TERRACOTTA="#C4785A";
 const SAGE="#7FA07A";
 const LIVRO_STATUS=[{k:"quero",label:"Quero ler/ouvir",color:"#C8B4E8"},{k:"lendo",label:"Iniciado",color:"#D4A843"},{k:"lido",label:"Concluído",color:"#7FA07A"}];
 const LIVRO_CATS=["Teologia","Direito","Maternidade","Ficção","Desenvolvimento pessoal","Biografia","Outro"];
+const LIVRO_MOODS=[
+  {k:"inspirada",label:"Inspirada",emoji:"✨",color:"#FAC775"},
+  {k:"paz",label:"Em paz",emoji:"🕊️",color:"#9FE1CB"},
+  {k:"emocionada",label:"Emocionada",emoji:"💗",color:"#F4C0D1"},
+  {k:"pensativa",label:"Pensativa",emoji:"🤔",color:"#B5D4F4"},
+  {k:"incomodada",label:"Incomodada",emoji:"🌧️",color:"#CECBF6"},
+  {k:"neutra",label:"Neutra",emoji:"◦",color:"#D3D1C7"}
+];
 
 /* ── HELPERS ──────────────────────────────────────────────────── */
 function toISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
@@ -837,7 +846,7 @@ function BackupModal({entries,livros,user,onImport,onClose}){
           for(const b of updateLivros){
             const idx=lrows.findIndex(r=>r[0]===b.id);
             if(idx!==-1){
-              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:N${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
+              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:P${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
             }
           }
         }
@@ -1324,6 +1333,8 @@ function LivroCard({livro,onClick,active}){
           <span style={{fontSize:"10px",fontWeight:700,color:"white",background:st.color,borderRadius:"8px",padding:"3px 9px"}}>{st.label}</span>
           {livro.category&&<span style={{fontSize:"10px",color:"#8a7d70",background:"#F5EDE0",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
           {livro.rating>0&&<span style={{fontSize:"11px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
+          {livro.mood&&(()=>{const m=LIVRO_MOODS.find(x=>x.k===livro.mood);return m?<span title={m.label} style={{fontSize:"12px"}}>{m.emoji}</span>:null;})()}
+          {livro.extent&&<span style={{fontSize:"10px",color:"#a89a8a"}}>{livro.extent}</span>}
         </div>
       </div>
     </div>
@@ -1347,8 +1358,9 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
   const[rating,sR]=useState(livro?.rating||0);
   const[startDate,sSD]=useState(livro?.startDate||"");
   const[endDate,sED]=useState(livro?.endDate||"");
-  const[quote,sQ]=useState(livro?.quote||"");
   const[notes,sN]=useState(livro?.notes||"");
+  const[extent,sExt]=useState(livro?.extent||"");
+  const[mood,sMood]=useState(livro?.mood||"");
   const[cover,sCover]=useState(livro?.cover||"");
   const[coverBusy,sCB]=useState(false);
   const[cardColor,sCC]=useState(livro?.cardColor||getRandomLivroPastel());
@@ -1381,7 +1393,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
     if(!title.trim()){alert("Digite ao menos o título do livro.");return;}
     ssav(true);
     const entry={id:livro?livro.id:Date.now().toString(),title:title.trim(),author:author.trim(),category,format,status,
-      rating,startDate,endDate,quote,notes,cover,cardColor,createdAt:livro?livro.createdAt:new Date().toISOString()};
+      rating,startDate,endDate,quote:livro?.quote||"",notes,extent,mood,cover,cardColor,createdAt:livro?livro.createdAt:new Date().toISOString()};
     try{await onSave(entry);}
     catch(e){alert("Erro ao salvar: "+e.message);}
     ssav(false);
@@ -1459,6 +1471,9 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
         </div>
       </div>
 
+      <label style={lbl}>{format==="audiolivro"?"Duração total":"Número de páginas"}</label>
+      <input style={inp} value={extent} onChange={e=>sExt(e.target.value)} placeholder={format==="audiolivro"?"ex: 8h 32min":"ex: 312"}/>
+
       <label style={lbl}>Avaliação</label>
       <div style={{display:"flex",gap:"4px",marginBottom:"14px"}}>
         {[1,2,3,4,5].map(n=>(
@@ -1466,8 +1481,12 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
         ))}
       </div>
 
-      <label style={lbl}>Citação favorita</label>
-      <textarea style={{...inp,minHeight:"60px",resize:"vertical"}} value={quote} onChange={e=>sQ(e.target.value)} placeholder="Um trecho marcante..."/>
+      <label style={lbl}>Como essa leitura te fez sentir</label>
+      <div style={{display:"flex",gap:"6px",marginBottom:"14px",flexWrap:"wrap"}}>
+        {LIVRO_MOODS.map(m=>(
+          <button key={m.k} onClick={()=>sMood(mood===m.k?"":m.k)} style={{padding:"7px 11px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",background:mood===m.k?m.color:"#F5EDE0",color:"#5a4d40"}}>{m.emoji} {m.label}</button>
+        ))}
+      </div>
 
       <label style={lbl}>Notas e impressões</label>
       <textarea style={{...inp,minHeight:"90px",resize:"vertical"}} value={notes} onChange={e=>sN(e.target.value)} placeholder="O que você achou, o que aprendeu..."/>
@@ -1481,11 +1500,90 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
   );
 }
 
+/* ── LIVROS: ESTANTE 3D ────────────────────────────────────── */
+function LivroShelf({livros,onClick,sel}){
+  if(livros.length===0)return(
+    <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
+      <div style={{fontSize:"36px",marginBottom:"8px"}}>📚</div>
+      <p style={{fontSize:"13px"}}>Nenhum livro por aqui ainda.</p>
+    </div>
+  );
+  return(
+    <div style={{padding:"6px 4px"}}>
+      <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-end",gap:"5px",background:"#F5EDE0",borderRadius:"10px",padding:"16px 10px 0"}}>
+        {livros.map(l=>{
+          const h=90+((l.title.length*7)%45);
+          const w=22+((l.author.length*3)%14);
+          return(
+            <div key={l.id} onClick={()=>onClick(l)} title={l.title}
+              style={{width:w+"px",height:h+"px",background:l.cardColor?shiftColor(l.cardColor):"#D8C8B0",
+                borderRadius:"3px 3px 0 0",cursor:"pointer",boxShadow:sel?.id===l.id?`0 0 0 2px ${TERRACOTTA}`:"inset -3px 0 5px rgba(0,0,0,0.12)",
+                display:"flex",alignItems:"center",justifyContent:"center",writingMode:"vertical-rl",
+                fontSize:"10px",color:"#5a4d40",overflow:"hidden",padding:"4px 0",fontFamily:"'Lora',serif"}}>
+              {l.title.length>16?l.title.slice(0,15)+"…":l.title}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{height:"12px",background:"linear-gradient(180deg,#D9C3A3,#C4A578)",borderRadius:"0 0 6px 6px",boxShadow:"0 3px 6px rgba(0,0,0,0.12)"}}/>
+      <p style={{textAlign:"center",fontSize:"11px",color:"#c5b8a8",padding:"8px 0 0",fontStyle:"italic"}}>toque numa lombada para abrir o livro</p>
+    </div>
+  );
+}
+function shiftColor(hex){
+  // escurece levemente uma cor pastel para simular a lombada do livro
+  const n=parseInt(hex.slice(1),16);
+  const r=Math.max(0,((n>>16)&255)-14),g=Math.max(0,((n>>8)&255)-14),b=Math.max(0,(n&255)-14);
+  return`rgb(${r},${g},${b})`;
+}
+
+/* ── LIVROS: MAPA DE HUMOR ─────────────────────────────────── */
+function LivroMoodMap({livros}){
+  const lidos=livros.filter(l=>l.status==="lido").slice().sort((a,b)=>new Date(a.endDate||a.createdAt)-new Date(b.endDate||b.createdAt));
+  if(lidos.length===0)return(
+    <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
+      <div style={{fontSize:"36px",marginBottom:"8px"}}>🕊️</div>
+      <p style={{fontSize:"13px"}}>Nenhuma leitura concluída registrada ainda.</p>
+      <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Marque livros como "Concluído" e registre como eles te fizeram sentir.</p>
+    </div>
+  );
+  return(
+    <div style={{padding:"14px"}}>
+      <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Como suas leituras concluídas te fizeram sentir, em ordem cronológica.</p>
+      <div style={{display:"flex",flexWrap:"wrap",gap:"8px",marginBottom:"20px"}}>
+        {lidos.map(l=>{
+          const m=LIVRO_MOODS.find(x=>x.k===l.mood);
+          return(
+            <div key={l.id} title={l.title} style={{width:"38px",height:"38px",borderRadius:"10px",background:m?m.color:"#EDE5DC",
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:"16px",cursor:"default"}}>
+              {m?m.emoji:"·"}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
+        {LIVRO_MOODS.map(m=>{
+          const count=lidos.filter(l=>l.mood===m.k).length;
+          if(count===0)return null;
+          return(
+            <div key={m.k} style={{display:"flex",alignItems:"center",gap:"8px"}}>
+              <div style={{width:"16px",height:"16px",borderRadius:"5px",background:m.color,flexShrink:0}}/>
+              <span style={{fontSize:"12px",color:"#6a5a4a"}}>{m.emoji} {m.label}</span>
+              <span style={{fontSize:"11px",color:"#c5b8a8"}}>({count})</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ── LIVROS: SEÇÃO ─────────────────────────────────────────── */
 function LivrosSection({livros,onSave,onDel,mob}){
   const[sel,ss]=useState(null);
   const[editing,se_]=useState(false);
   const[filter,sf]=useState("todos");
+  const[view,sv]=useState("lista");
 
   const filtered = filter==="todos" ? livros : livros.filter(l=>l.status===filter);
   const counts = {todos:livros.length,quero:livros.filter(l=>l.status==="quero").length,
@@ -1506,19 +1604,28 @@ function LivrosSection({livros,onSave,onDel,mob}){
           </div>
           <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
         </div>
-        <div style={{display:"flex",gap:"5px",padding:"10px 14px 0",flexWrap:"wrap"}}>
-          {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
-            <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70"}}>{s.label} ({counts[s.k]})</span>
+        <div style={{display:"flex",gap:"5px",padding:"10px 14px 0"}}>
+          {[{k:"lista",label:"📋 Lista"},{k:"estante",label:"📚 Estante"},{k:"humor",label:"🕊️ Humor"}].map(v=>(
+            <button key={v.k} onClick={()=>sv(v.k)} style={{flex:1,padding:"6px 4px",borderRadius:"9px",border:"none",cursor:"pointer",fontSize:"11px",fontFamily:"'Lora',serif",fontWeight:view===v.k?700:400,background:view===v.k?TERRACOTTA:"#F5EDE0",color:view===v.k?"white":"#8a7d70"}}>{v.label}</button>
           ))}
         </div>
-        <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
-          {filtered.length===0?(
+        {view!=="humor"&&(
+          <div style={{display:"flex",gap:"5px",padding:"10px 14px 0",flexWrap:"wrap"}}>
+            {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
+              <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70"}}>{s.label} ({counts[s.k]})</span>
+            ))}
+          </div>
+        )}
+        <div style={{flex:1,overflowY:"auto",padding:view==="lista"?"12px 14px":"12px 10px"}}>
+          {view==="lista"&&(filtered.length===0?(
             <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
               <div style={{fontSize:"36px",marginBottom:"8px"}}>📚</div>
               <p style={{fontSize:"13px"}}>Nenhum livro por aqui ainda.</p>
               <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Clique em "+ Novo" para registrar uma leitura.</p>
             </div>
-          ):filtered.map(l=><LivroCard key={l.id} livro={l} active={sel?.id===l.id} onClick={()=>openEdit(l)}/>)}
+          ):filtered.map(l=><LivroCard key={l.id} livro={l} active={sel?.id===l.id} onClick={()=>openEdit(l)}/>))}
+          {view==="estante"&&<LivroShelf livros={filtered} onClick={openEdit} sel={sel}/>}
+          {view==="humor"&&<LivroMoodMap livros={livros}/>}
         </div>
       </div>
 
