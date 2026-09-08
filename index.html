@@ -137,8 +137,8 @@ async function ensureLivrosSheet(){
   }
   const head = await sheetsReq(`/values/${LIVROS_SHEET}!A1:A1`);
   if(!(head.values&&head.values[0]&&head.values[0][0]==="id")){
-    await sheetsReq(`/values/${LIVROS_SHEET}!A1:P1?valueInputOption=RAW`,"PUT",
-      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt","cover","cardColor","mood","extent"]]});
+    await sheetsReq(`/values/${LIVROS_SHEET}!A1:Q1?valueInputOption=RAW`,"PUT",
+      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt","cover","cardColor","mood","pages","durationMin"]]});
   }
   livrosSheetReady=true;
 }
@@ -147,17 +147,17 @@ function rowToLivro(r){
   return{id:r[0],title:r[1]||"",author:r[2]||"",category:r[3]||"",format:r[4]||"fisico",
     status:r[5]||"lendo",rating:parseInt(r[6])||0,startDate:r[7]||"",endDate:r[8]||"",
     quote:r[9]||"",notes:r[10]||"",createdAt:r[11]||new Date().toISOString(),cover:r[12]||"",
-    cardColor:r[13]||"",mood:r[14]||"",extent:r[15]||""};
+    cardColor:r[13]||"",mood:r[14]||"",pages:parseInt(r[15])||0,durationMin:parseInt(r[16])||0};
 }
 function livroToRow(b){
   return[b.id,b.title,b.author,b.category,b.format||"fisico",b.status||"lendo",b.rating||0,
     b.startDate||"",b.endDate||"",b.quote||"",b.notes||"",b.createdAt,b.cover||"",b.cardColor||"",
-    b.mood||"",b.extent||""];
+    b.mood||"",b.pages||0,b.durationMin||0];
 }
 
 async function dbLoadLivros(){
   await ensureLivrosSheet();
-  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:P`);
+  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:Q`);
   return (d.values||[]).filter(r=>r[0]).map(rowToLivro).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
 }
 
@@ -171,7 +171,7 @@ async function dbSaveLivro(livro){
       {values:[livroToRow(livro)]});
   }else{
     const row = idx+2;
-    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:P${row}?valueInputOption=RAW`,"PUT",
+    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:Q${row}?valueInputOption=RAW`,"PUT",
       {values:[livroToRow(livro)]});
   }
 }
@@ -846,7 +846,7 @@ function BackupModal({entries,livros,user,onImport,onClose}){
           for(const b of updateLivros){
             const idx=lrows.findIndex(r=>r[0]===b.id);
             if(idx!==-1){
-              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:P${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
+              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:Q${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
             }
           }
         }
@@ -1334,7 +1334,8 @@ function LivroCard({livro,onClick,active}){
           {livro.category&&<span style={{fontSize:"10px",color:"#8a7d70",background:"#F5EDE0",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
           {livro.rating>0&&<span style={{fontSize:"11px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
           {livro.mood&&(()=>{const m=LIVRO_MOODS.find(x=>x.k===livro.mood);return m?<span title={m.label} style={{fontSize:"12px"}}>{m.emoji}</span>:null;})()}
-          {livro.extent&&<span style={{fontSize:"10px",color:"#a89a8a"}}>{livro.extent}</span>}
+          {livro.format==="fisico"&&livro.pages>0&&<span style={{fontSize:"10px",color:"#a89a8a"}}>{livro.pages}p</span>}
+          {livro.format==="audiolivro"&&livro.durationMin>0&&<span style={{fontSize:"10px",color:"#a89a8a"}}>{Math.floor(livro.durationMin/60)}h{String(livro.durationMin%60).padStart(2,"0")}</span>}
         </div>
       </div>
     </div>
@@ -1359,7 +1360,9 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
   const[startDate,sSD]=useState(livro?.startDate||"");
   const[endDate,sED]=useState(livro?.endDate||"");
   const[notes,sN]=useState(livro?.notes||"");
-  const[extent,sExt]=useState(livro?.extent||"");
+  const[pages,sPages]=useState(livro?.pages?String(livro.pages):"");
+  const[durH,sDurH]=useState(livro?.durationMin?String(Math.floor(livro.durationMin/60)):"");
+  const[durM,sDurM]=useState(livro?.durationMin?String(livro.durationMin%60):"");
   const[mood,sMood]=useState(livro?.mood||"");
   const[cover,sCover]=useState(livro?.cover||"");
   const[coverBusy,sCB]=useState(false);
@@ -1393,7 +1396,10 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
     if(!title.trim()){alert("Digite ao menos o título do livro.");return;}
     ssav(true);
     const entry={id:livro?livro.id:Date.now().toString(),title:title.trim(),author:author.trim(),category,format,status,
-      rating,startDate,endDate,quote:livro?.quote||"",notes,extent,mood,cover,cardColor,createdAt:livro?livro.createdAt:new Date().toISOString()};
+      rating,startDate,endDate,quote:livro?.quote||"",notes,
+      pages:format==="fisico"?(parseInt(pages)||0):0,
+      durationMin:format==="audiolivro"?((parseInt(durH)||0)*60+(parseInt(durM)||0)):0,
+      mood,cover,cardColor,createdAt:livro?livro.createdAt:new Date().toISOString()};
     try{await onSave(entry);}
     catch(e){alert("Erro ao salvar: "+e.message);}
     ssav(false);
@@ -1472,7 +1478,14 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       </div>
 
       <label style={lbl}>{format==="audiolivro"?"Duração total":"Número de páginas"}</label>
-      <input style={inp} value={extent} onChange={e=>sExt(e.target.value)} placeholder={format==="audiolivro"?"ex: 8h 32min":"ex: 312"}/>
+      {format==="audiolivro"?(
+        <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
+          <input type="number" min="0" style={{...inp,marginBottom:0}} value={durH} onChange={e=>sDurH(e.target.value)} placeholder="horas"/>
+          <input type="number" min="0" max="59" style={{...inp,marginBottom:0}} value={durM} onChange={e=>sDurM(e.target.value)} placeholder="minutos"/>
+        </div>
+      ):(
+        <input type="number" min="0" style={inp} value={pages} onChange={e=>sPages(e.target.value)} placeholder="ex: 312"/>
+      )}
 
       <label style={lbl}>Avaliação</label>
       <div style={{display:"flex",gap:"4px",marginBottom:"14px"}}>
@@ -1578,31 +1591,181 @@ function LivroMoodMap({livros}){
   );
 }
 
+/* ── LIVROS: PAINEL RESUMO DO ANO ──────────────────────────── */
+const MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+function BarRow({label,value,max,color,suffix}){
+  const pct=max>0?Math.max(3,(value/max)*100):0;
+  return(
+    <div style={{marginBottom:"10px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:"11px",color:"#6a5a4a",marginBottom:"3px"}}>
+        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"70%"}}>{label}</span>
+        <span style={{color:"#a89a8a"}}>{value}{suffix||""}</span>
+      </div>
+      <div style={{background:"#F0E8DC",borderRadius:"6px",height:"9px",overflow:"hidden"}}>
+        <div style={{width:pct+"%",height:"100%",background:color,borderRadius:"6px"}}/>
+      </div>
+    </div>
+  );
+}
+function MiniBars({data,color}){
+  const max=Math.max(1,...data.map(d=>d.v));
+  return(
+    <div style={{display:"flex",alignItems:"flex-end",gap:"4px",height:"90px",padding:"0 2px"}}>
+      {data.map((d,i)=>(
+        <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}>
+          <div style={{width:"100%",height:Math.max(3,(d.v/max)*70)+"px",background:color,borderRadius:"3px 3px 0 0"}}/>
+          <span style={{fontSize:"9px",color:"#a89a8a"}}>{d.k}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+function LivroDashboard({livros}){
+  const lidos=livros.filter(l=>l.status==="lido"&&(l.endDate||l.createdAt));
+  const anos=[...new Set(lidos.map(l=>new Date(l.endDate||l.createdAt).getFullYear()))].sort((a,b)=>b-a);
+  const anoAtual=new Date().getFullYear();
+  const[ano,sAno]=useState(anos.includes(anoAtual)?anoAtual:(anos[0]||anoAtual));
+
+  const doAno=lidos.filter(l=>new Date(l.endDate||l.createdAt).getFullYear()===ano)
+    .sort((a,b)=>new Date(a.endDate||a.createdAt)-new Date(b.endDate||b.createdAt));
+
+  const totalPaginas=doAno.reduce((s,l)=>s+(l.pages||0),0);
+  const totalMin=doAno.reduce((s,l)=>s+(l.durationMin||0),0);
+  const totalHoras=Math.round(totalMin/60);
+
+  let sequencia=0;
+  if(doAno.length>0){
+    const d1=new Date(doAno[0].endDate||doAno[0].createdAt);
+    const d2=new Date(doAno[doAno.length-1].endDate||doAno[doAno.length-1].createdAt);
+    sequencia=Math.max(1,Math.round((d2-d1)/86400000)+1);
+  }
+
+  const porMes=MESES.map((m,i)=>({k:m,v:doAno.filter(l=>new Date(l.endDate||l.createdAt).getMonth()===i).length}));
+  const paginasPorMes=MESES.map((m,i)=>({k:m,v:doAno.filter(l=>new Date(l.endDate||l.createdAt).getMonth()===i).reduce((s,l)=>s+(l.pages||0),0)}));
+
+  const contarPor=(arr,fn)=>{
+    const map={};
+    arr.forEach(l=>{const k=fn(l);if(!k)return;map[k]=(map[k]||0)+1;});
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  };
+  const generos=contarPor(doAno,l=>l.category).slice(0,6);
+  const autores=contarPor(doAno,l=>l.author).slice(0,6);
+  const notas=[5,4,3,2,1].map(n=>({k:n+"★",v:doAno.filter(l=>l.rating===n).length}));
+  const formatos=[
+    {k:"Físico",v:doAno.filter(l=>l.format==="fisico").length,color:TERRACOTTA},
+    {k:"Audiolivro",v:doAno.filter(l=>l.format==="audiolivro").length,color:SAGE}
+  ];
+  const maxGen=Math.max(1,...generos.map(g=>g[1]));
+  const maxAut=Math.max(1,...autores.map(a=>a[1]));
+  const maxForm=Math.max(1,...formatos.map(f=>f.v));
+
+  const sec={fontFamily:"'Playfair Display',serif",fontSize:"13px",color:"#6a5a4a",marginBottom:"10px"};
+  const card={background:"white",border:"1px solid #EDE5DC",borderRadius:"14px",padding:"16px",marginBottom:"14px"};
+
+  return(
+    <div style={{padding:"18px 20px",overflowY:"auto",flex:1}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
+        <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"19px",color:"#1a1410"}}>Resumo do ano</h2>
+        <select value={ano} onChange={e=>sAno(parseInt(e.target.value))} style={{padding:"7px 12px",borderRadius:"9px",border:"1px solid #EDE5DC",fontSize:"13px",fontFamily:"'Lora',serif",background:"#FAF7F0"}}>
+          {(anos.length?anos:[anoAtual]).map(a=><option key={a} value={a}>{a}</option>)}
+        </select>
+      </div>
+
+      {doAno.length===0?(
+        <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
+          <div style={{fontSize:"36px",marginBottom:"8px"}}>📊</div>
+          <p style={{fontSize:"13px"}}>Nenhuma leitura concluída em {ano} ainda.</p>
+        </div>
+      ):(
+        <>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px",marginBottom:"18px"}}>
+            <div style={{...card,marginBottom:0,textAlign:"center"}}>
+              <div style={{fontSize:"22px"}}>📚</div>
+              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{doAno.length}</p>
+              <p style={{fontSize:"11px",color:"#a89a8a"}}>livros concluídos</p>
+            </div>
+            <div style={{...card,marginBottom:0,textAlign:"center"}}>
+              <div style={{fontSize:"22px"}}>📄</div>
+              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{totalPaginas.toLocaleString("pt-BR")}</p>
+              <p style={{fontSize:"11px",color:"#a89a8a"}}>páginas</p>
+            </div>
+            <div style={{...card,marginBottom:0,textAlign:"center"}}>
+              <div style={{fontSize:"22px"}}>⏱️</div>
+              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{totalHoras}h</p>
+              <p style={{fontSize:"11px",color:"#a89a8a"}}>de leitura em áudio</p>
+            </div>
+            <div style={{...card,marginBottom:0,textAlign:"center"}}>
+              <div style={{fontSize:"22px"}}>🔥</div>
+              <p style={{fontSize:"20px",fontFamily:"'Playfair Display',serif",color:"#1a1410"}}>{sequencia}</p>
+              <p style={{fontSize:"11px",color:"#a89a8a"}}>dias entre a 1ª e a última leitura</p>
+            </div>
+          </div>
+
+          <div style={card}>
+            <p style={sec}>Livros por mês</p>
+            <MiniBars data={porMes} color={TERRACOTTA}/>
+          </div>
+
+          <div style={card}>
+            <p style={sec}>Páginas por mês</p>
+            <MiniBars data={paginasPorMes} color={AMBER}/>
+          </div>
+
+          <div style={card}>
+            <p style={sec}>Gêneros mais lidos</p>
+            {generos.length===0?<p style={{fontSize:"12px",color:"#c5b8a8"}}>Sem categorias registradas.</p>:
+              generos.map(([k,v])=><BarRow key={k} label={k} value={v} max={maxGen} color={LILAC}/>)}
+          </div>
+
+          <div style={card}>
+            <p style={sec}>Autores mais lidos</p>
+            {autores.map(([k,v])=><BarRow key={k} label={k} value={v} max={maxAut} color={SAGE}/>)}
+          </div>
+
+          <div style={card}>
+            <p style={sec}>Notas atribuídas</p>
+            {notas.map(n=><BarRow key={n.k} label={n.k} value={n.v} max={Math.max(1,...notas.map(x=>x.v))} color={AMBER}/>)}
+          </div>
+
+          <div style={{...card,marginBottom:0}}>
+            <p style={sec}>Físico × Audiolivro</p>
+            {formatos.map(f=><BarRow key={f.k} label={f.k} value={f.v} max={maxForm} color={f.color}/>)}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── LIVROS: SEÇÃO ─────────────────────────────────────────── */
 function LivrosSection({livros,onSave,onDel,mob}){
   const[sel,ss]=useState(null);
   const[editing,se_]=useState(false);
   const[filter,sf]=useState("todos");
   const[view,sv]=useState("lista");
+  const[showDash,sDash]=useState(false);
 
   const filtered = filter==="todos" ? livros : livros.filter(l=>l.status===filter);
   const counts = {todos:livros.length,quero:livros.filter(l=>l.status==="quero").length,
     lendo:livros.filter(l=>l.status==="lendo").length,lido:livros.filter(l=>l.status==="lido").length};
 
-  const openNew=()=>{ss(null);se_(true);};
-  const openEdit=(l)=>{ss(l);se_(true);};
+  const openNew=()=>{sDash(false);ss(null);se_(true);};
+  const openEdit=(l)=>{sDash(false);ss(l);se_(true);};
   const handleSave=async(entry)=>{await onSave(entry);se_(false);ss(null);};
   const handleDel=async(id)=>{await onDel(id);se_(false);ss(null);};
 
   return(
     <div style={{display:"flex",height:"100%",overflow:"hidden"}}>
-      <div style={{width:mob?"100%":"320px",minWidth:mob?"100%":"320px",display:mob&&editing?"none":"flex",flexDirection:"column",borderRight:mob?"none":"1px solid #EDE5DC",background:"white",overflow:"hidden"}}>
+      <div style={{width:mob?"100%":"320px",minWidth:mob?"100%":"320px",display:mob&&(editing||showDash)?"none":"flex",flexDirection:"column",borderRight:mob?"none":"1px solid #EDE5DC",background:"white",overflow:"hidden"}}>
         <div style={{padding:"18px 18px 12px",borderBottom:"1px solid #EDE5DC",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#1a1410"}}>📚 Leituras</h2>
             <p style={{fontSize:"11px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
           </div>
-          <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
+          <div style={{display:"flex",gap:"6px"}}>
+            <button onClick={()=>{se_(false);ss(null);sDash(true);}} title="Resumo do ano" style={{background:"#F5EDE0",color:"#6a5a4a",border:"none",borderRadius:"10px",padding:"7px 10px",fontSize:"12px",cursor:"pointer"}}>📊</button>
+            <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
+          </div>
         </div>
         <div style={{display:"flex",gap:"5px",padding:"10px 14px 0"}}>
           {[{k:"lista",label:"📋 Lista"},{k:"estante",label:"📚 Estante"},{k:"humor",label:"🕊️ Humor"}].map(v=>(
@@ -1629,7 +1792,7 @@ function LivrosSection({livros,onSave,onDel,mob}){
         </div>
       </div>
 
-      {(!mob||editing)&&(
+      {(!mob||editing||showDash)&&(
         <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
           {editing?(
             <>
@@ -1637,6 +1800,13 @@ function LivrosSection({livros,onSave,onDel,mob}){
                 <button onClick={()=>{se_(false);ss(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:"13px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
               </div>}
               <LivroForm livro={sel} onSave={handleSave} onCancel={()=>{se_(false);ss(null);}} onDelete={handleDel}/>
+            </>
+          ):showDash?(
+            <>
+              {mob&&<div style={{padding:"14px 18px",borderBottom:"1px solid #EDE5DC",flexShrink:0}}>
+                <button onClick={()=>sDash(false)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"13px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
+              </div>}
+              <LivroDashboard livros={livros}/>
             </>
           ):(
             <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px",color:"#d5c8b8"}}>
