@@ -123,6 +123,70 @@ async function dbDelete(id){
   }}}]});
 }
 
+/* ── LIVROS (aba separada "Livros" na mesma planilha) ─────────── */
+/* Colunas: id, title, author, category, format, status, rating, startDate, endDate, quote, notes, createdAt */
+const LIVROS_SHEET="Livros";
+let livrosSheetReady=false;
+
+async function ensureLivrosSheet(){
+  if(livrosSheetReady)return;
+  const meta = await sheetsReq("?fields=sheets.properties");
+  const exists = (meta.sheets||[]).some(s=>s.properties.title===LIVROS_SHEET);
+  if(!exists){
+    await sheetsReq(":batchUpdate","POST",{requests:[{addSheet:{properties:{title:LIVROS_SHEET}}}]});
+  }
+  const head = await sheetsReq(`/values/${LIVROS_SHEET}!A1:A1`);
+  if(!(head.values&&head.values[0]&&head.values[0][0]==="id")){
+    await sheetsReq(`/values/${LIVROS_SHEET}!A1:L1?valueInputOption=RAW`,"PUT",
+      {values:[["id","title","author","category","format","status","rating","startDate","endDate","quote","notes","createdAt"]]});
+  }
+  livrosSheetReady=true;
+}
+
+function rowToLivro(r){
+  return{id:r[0],title:r[1]||"",author:r[2]||"",category:r[3]||"",format:r[4]||"fisico",
+    status:r[5]||"lendo",rating:parseInt(r[6])||0,startDate:r[7]||"",endDate:r[8]||"",
+    quote:r[9]||"",notes:r[10]||"",createdAt:r[11]||new Date().toISOString()};
+}
+function livroToRow(b){
+  return[b.id,b.title,b.author,b.category,b.format||"fisico",b.status||"lendo",b.rating||0,
+    b.startDate||"",b.endDate||"",b.quote||"",b.notes||"",b.createdAt];
+}
+
+async function dbLoadLivros(){
+  await ensureLivrosSheet();
+  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:L`);
+  return (d.values||[]).filter(r=>r[0]).map(rowToLivro).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+}
+
+async function dbSaveLivro(livro){
+  await ensureLivrosSheet();
+  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:A`);
+  const rows = d.values||[];
+  const idx = rows.findIndex(r=>r[0]===livro.id);
+  if(idx===-1){
+    await sheetsReq(`/values/${LIVROS_SHEET}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,"POST",
+      {values:[livroToRow(livro)]});
+  }else{
+    const row = idx+2;
+    await sheetsReq(`/values/${LIVROS_SHEET}!A${row}:L${row}?valueInputOption=RAW`,"PUT",
+      {values:[livroToRow(livro)]});
+  }
+}
+
+async function dbDeleteLivro(id){
+  await ensureLivrosSheet();
+  const d = await sheetsReq(`/values/${LIVROS_SHEET}!A2:A`);
+  const rows = d.values||[];
+  const idx = rows.findIndex(r=>r[0]===id);
+  if(idx===-1) return;
+  const sheetMeta = await sheetsReq("?fields=sheets.properties");
+  const sheetObj = sheetMeta.sheets.find(s=>s.properties.title===LIVROS_SHEET);
+  await sheetsReq(":batchUpdate","POST",{requests:[{deleteDimension:{range:{
+    sheetId:sheetObj.properties.sheetId, dimension:"ROWS", startIndex:idx+1, endIndex:idx+2
+  }}}]});
+}
+
 /* ── CONSTANTES ────────────────────────────────────────────────── */
 const FONTS=[
   {label:"Playfair Display",value:"'Playfair Display',Georgia,serif"},
@@ -156,6 +220,9 @@ const DS=["D","S","T","Q","Q","S","S"];
 const LILAC="#C8B4E8";
 const AMBER="#D4A843";
 const TERRACOTTA="#C4785A";
+const SAGE="#7FA07A";
+const LIVRO_STATUS=[{k:"quero",label:"Quero ler",color:"#C8B4E8"},{k:"lendo",label:"Lendo",color:"#D4A843"},{k:"lido",label:"Lido",color:"#7FA07A"}];
+const LIVRO_CATS=["Teologia","Direito","Maternidade","Ficção","Desenvolvimento pessoal","Biografia","Outro"];
 
 /* ── HELPERS ──────────────────────────────────────────────────── */
 function toISO(d){return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
@@ -618,17 +685,18 @@ function FrasesSection({entries,user,onSave,onDel,openFullEditor,mob}){
 }
 
 /* ── MODAL DE BACKUP ────────────────────────────────────────── */
-function BackupModal({entries,user,onImport,onClose}){
+function BackupModal({entries,livros,user,onImport,onClose}){
   const[importing,si]=useState(false);
   const[exporting,sex]=useState(false);
   const[msg,sm]=useState("");
   const fileRef=useRef(null);
+  const livrosList=livros||[];
 
   const exportToDrive=async()=>{
     sex(true);sm("Salvando no Drive…");
     try{
       const fileName=`meu-diario-backup-${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.json`;
-      const data={version:1,exported_at:new Date().toISOString(),user:user?.email,entries:entries};
+      const data={version:2,exported_at:new Date().toISOString(),user:user?.email,entries:entries,livros:livrosList};
       const content=JSON.stringify(data,null,2);
 
       // Find or create "Meu Diário" folder
@@ -722,8 +790,33 @@ function BackupModal({entries,user,onImport,onClose}){
         }
       }
 
-      onImport(data.entries);
-      sm(`✓ ${data.entries.length} entradas restauradas com sucesso!`);
+      // Restaura livros, se o backup tiver (aba separada "Livros", nunca mexe na aba do diário)
+      let importedLivros=[];
+      if(Array.isArray(data.livros)&&data.livros.length>0){
+        await ensureLivrosSheet();
+        const existingL=await sheetsReq(`/values/${LIVROS_SHEET}!A2:A`);
+        const existingLIds=new Set((existingL.values||[]).map(r=>r[0]).filter(Boolean));
+        const newLivros=data.livros.filter(b=>!existingLIds.has(b.id));
+        const updateLivros=data.livros.filter(b=>existingLIds.has(b.id));
+        if(newLivros.length>0){
+          await sheetsReq(`/values/${LIVROS_SHEET}!A1:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,"POST",
+            {values:newLivros.map(livroToRow)});
+        }
+        if(updateLivros.length>0){
+          const allLRows=await sheetsReq(`/values/${LIVROS_SHEET}!A2:A`);
+          const lrows=(allLRows.values||[]);
+          for(const b of updateLivros){
+            const idx=lrows.findIndex(r=>r[0]===b.id);
+            if(idx!==-1){
+              await sheetsReq(`/values/${LIVROS_SHEET}!A${idx+2}:L${idx+2}?valueInputOption=RAW`,"PUT",{values:[livroToRow(b)]});
+            }
+          }
+        }
+        importedLivros=data.livros;
+      }
+
+      onImport(data.entries,importedLivros);
+      sm(`✓ ${data.entries.length} entradas${importedLivros.length?` e ${importedLivros.length} livros`:""} restaurados com sucesso!`);
     }catch(err){sm("Erro ao importar: "+err.message);}
     si(false);
   };
@@ -739,7 +832,7 @@ function BackupModal({entries,user,onImport,onClose}){
           <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",marginBottom:"4px"}}>☁️ Salvar backup no Drive</p>
           <p style={{fontSize:"12px",color:"#8a7d70",marginBottom:"12px"}}>Salva um arquivo JSON na pasta "Meu Diário" do seu Google Drive automaticamente.</p>
           <button onClick={exportToDrive} disabled={exporting} style={{width:"100%",padding:"11px",background:exporting?"#d4a090":TERRACOTTA,border:"none",borderRadius:"11px",fontSize:"14px",cursor:exporting?"default":"pointer",fontFamily:"'Playfair Display',serif",color:"white"}}>
-            {exporting?"Salvando…":`Salvar no Drive (${entries.length} entradas)`}
+            {exporting?"Salvando…":`Salvar no Drive (${entries.length} entradas, ${livrosList.length} livros)`}
           </button>
         </div>
 
@@ -1179,6 +1272,182 @@ function DevoSection({entries,user,onSave,onDel,openEditor,mob}){
 }
 
 
+/* ── LIVROS: CARD ───────────────────────────────────────────── */
+function LivroCard({livro,onClick,active}){
+  const st=LIVRO_STATUS.find(s=>s.k===livro.status)||LIVRO_STATUS[1];
+  return(
+    <div onClick={onClick} style={{background:active?"#F5EDE0":"white",border:`1px solid ${active?TERRACOTTA:"#EDE5DC"}`,borderRadius:"14px",padding:"14px",marginBottom:"10px",cursor:"pointer",transition:"all .15s"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"}}>
+        <div style={{flex:1,minWidth:0}}>
+          <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.title||"Sem título"}</p>
+          <p style={{fontSize:"12px",color:"#8a7d70",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.author||"Autor desconhecido"}</p>
+        </div>
+        <span style={{fontSize:"16px",flexShrink:0}}>{livro.format==="audiolivro"?"🎧":"📘"}</span>
+      </div>
+      <div style={{display:"flex",gap:"6px",alignItems:"center",marginTop:"8px",flexWrap:"wrap"}}>
+        <span style={{fontSize:"10px",fontWeight:700,color:"white",background:st.color,borderRadius:"8px",padding:"3px 9px"}}>{st.label}</span>
+        {livro.category&&<span style={{fontSize:"10px",color:"#8a7d70",background:"#F5EDE0",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
+        {livro.rating>0&&<span style={{fontSize:"11px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
+      </div>
+    </div>
+  );
+}
+
+/* ── LIVROS: FORMULÁRIO ────────────────────────────────────── */
+function LivroForm({livro,onSave,onCancel,onDelete}){
+  const[title,sT]=useState(livro?.title||"");
+  const[author,sA]=useState(livro?.author||"");
+  const[category,sC]=useState(livro?.category||LIVRO_CATS[0]);
+  const[format,sF]=useState(livro?.format||"fisico");
+  const[status,sS]=useState(livro?.status||"quero");
+  const[rating,sR]=useState(livro?.rating||0);
+  const[startDate,sSD]=useState(livro?.startDate||"");
+  const[endDate,sED]=useState(livro?.endDate||"");
+  const[quote,sQ]=useState(livro?.quote||"");
+  const[notes,sN]=useState(livro?.notes||"");
+  const[saving,ssav]=useState(false);
+
+  const lbl={fontSize:"11px",color:"#8a7d70",fontWeight:600,marginBottom:"5px",display:"block"};
+  const inp={width:"100%",padding:"10px 12px",border:"1px solid #EDE5DC",borderRadius:"10px",fontSize:"14px",fontFamily:"'Lora',serif",background:"#FAF7F0",marginBottom:"14px"};
+
+  const save=async()=>{
+    if(!title.trim()){alert("Digite ao menos o título do livro.");return;}
+    ssav(true);
+    const entry={id:livro?livro.id:Date.now().toString(),title:title.trim(),author:author.trim(),category,format,status,
+      rating,startDate,endDate,quote,notes,createdAt:livro?livro.createdAt:new Date().toISOString()};
+    try{await onSave(entry);}
+    catch(e){alert("Erro ao salvar: "+e.message);}
+    ssav(false);
+  };
+
+  return(
+    <div style={{padding:"20px 22px",maxWidth:"520px",overflowY:"auto",flex:1}}>
+      <label style={lbl}>Título</label>
+      <input style={inp} value={title} onChange={e=>sT(e.target.value)} placeholder="Nome do livro"/>
+
+      <label style={lbl}>Autor</label>
+      <input style={inp} value={author} onChange={e=>sA(e.target.value)} placeholder="Autor(a)"/>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+        <div>
+          <label style={lbl}>Categoria</label>
+          <select style={inp} value={category} onChange={e=>sC(e.target.value)}>
+            {LIVRO_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={lbl}>Formato</label>
+          <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
+            {[{k:"fisico",label:"📘 Físico"},{k:"audiolivro",label:"🎧 Áudio"}].map(f=>(
+              <button key={f.k} onClick={()=>sF(f.k)} style={{flex:1,padding:"10px 6px",borderRadius:"10px",border:"1px solid #EDE5DC",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",background:format===f.k?TERRACOTTA:"#FAF7F0",color:format===f.k?"white":"#6a5a4a"}}>{f.label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <label style={lbl}>Status</label>
+      <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
+        {LIVRO_STATUS.map(s=>(
+          <button key={s.k} onClick={()=>sS(s.k)} style={{flex:1,padding:"9px 6px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",fontWeight:status===s.k?700:400,background:status===s.k?s.color:"#F5EDE0",color:status===s.k?"white":"#8a7d70"}}>{s.label}</button>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px"}}>
+        <div>
+          <label style={lbl}>Início da leitura</label>
+          <input type="date" style={inp} value={startDate} onChange={e=>sSD(e.target.value)}/>
+        </div>
+        <div>
+          <label style={lbl}>Fim da leitura</label>
+          <input type="date" style={inp} value={endDate} onChange={e=>sED(e.target.value)}/>
+        </div>
+      </div>
+
+      <label style={lbl}>Avaliação</label>
+      <div style={{display:"flex",gap:"4px",marginBottom:"14px"}}>
+        {[1,2,3,4,5].map(n=>(
+          <span key={n} onClick={()=>sR(rating===n?0:n)} style={{fontSize:"24px",cursor:"pointer",color:n<=rating?AMBER:"#e0d4c8"}}>★</span>
+        ))}
+      </div>
+
+      <label style={lbl}>Citação favorita</label>
+      <textarea style={{...inp,minHeight:"60px",resize:"vertical"}} value={quote} onChange={e=>sQ(e.target.value)} placeholder="Um trecho marcante..."/>
+
+      <label style={lbl}>Notas e impressões</label>
+      <textarea style={{...inp,minHeight:"90px",resize:"vertical"}} value={notes} onChange={e=>sN(e.target.value)} placeholder="O que você achou, o que aprendeu..."/>
+
+      <div style={{display:"flex",gap:"10px",marginTop:"6px"}}>
+        <button onClick={onCancel} style={{flex:1,padding:"12px",background:"#F5EDE0",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>Cancelar</button>
+        {livro&&<button onClick={()=>onDelete(livro.id)} style={{padding:"12px 16px",background:"#F8E0E0",border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Excluir</button>}
+        <button onClick={save} disabled={saving} style={{flex:1,padding:"12px",background:SAGE,border:"none",borderRadius:"12px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif",color:"white",opacity:saving?0.7:1}}>{saving?"Salvando…":"Salvar"}</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── LIVROS: SEÇÃO ─────────────────────────────────────────── */
+function LivrosSection({livros,onSave,onDel,mob}){
+  const[sel,ss]=useState(null);
+  const[editing,se_]=useState(false);
+  const[filter,sf]=useState("todos");
+
+  const filtered = filter==="todos" ? livros : livros.filter(l=>l.status===filter);
+  const counts = {todos:livros.length,quero:livros.filter(l=>l.status==="quero").length,
+    lendo:livros.filter(l=>l.status==="lendo").length,lido:livros.filter(l=>l.status==="lido").length};
+
+  const openNew=()=>{ss(null);se_(true);};
+  const openEdit=(l)=>{ss(l);se_(true);};
+  const handleSave=async(entry)=>{await onSave(entry);se_(false);ss(null);};
+  const handleDel=async(id)=>{await onDel(id);se_(false);ss(null);};
+
+  return(
+    <div style={{display:"flex",height:"100%",overflow:"hidden"}}>
+      <div style={{width:mob?"100%":"320px",minWidth:mob?"100%":"320px",display:mob&&editing?"none":"flex",flexDirection:"column",borderRight:mob?"none":"1px solid #EDE5DC",background:"white",overflow:"hidden"}}>
+        <div style={{padding:"18px 18px 12px",borderBottom:"1px solid #EDE5DC",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#1a1410"}}>📚 Leituras</h2>
+            <p style={{fontSize:"11px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
+          </div>
+          <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
+        </div>
+        <div style={{display:"flex",gap:"5px",padding:"10px 14px 0",flexWrap:"wrap"}}>
+          {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
+            <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70"}}>{s.label} ({counts[s.k]})</span>
+          ))}
+        </div>
+        <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
+          {filtered.length===0?(
+            <div style={{textAlign:"center",padding:"48px 0",color:"#d5c8b8"}}>
+              <div style={{fontSize:"36px",marginBottom:"8px"}}>📚</div>
+              <p style={{fontSize:"13px"}}>Nenhum livro por aqui ainda.</p>
+              <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Clique em "+ Novo" para registrar uma leitura.</p>
+            </div>
+          ):filtered.map(l=><LivroCard key={l.id} livro={l} active={sel?.id===l.id} onClick={()=>openEdit(l)}/>)}
+        </div>
+      </div>
+
+      {(!mob||editing)&&(
+        <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          {editing?(
+            <>
+              {mob&&<div style={{padding:"14px 18px",borderBottom:"1px solid #EDE5DC",flexShrink:0}}>
+                <button onClick={()=>{se_(false);ss(null);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:"13px",color:TERRACOTTA,fontFamily:"'Lora',serif"}}>‹ Voltar</button>
+              </div>}
+              <LivroForm livro={sel} onSave={handleSave} onCancel={()=>{se_(false);ss(null);}} onDelete={handleDel}/>
+            </>
+          ):(
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"10px",color:"#d5c8b8"}}>
+              <div style={{fontSize:"48px"}}>📚</div>
+              <p style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#b5a898"}}>Selecione um livro</p>
+              <button onClick={openNew} style={{marginTop:"10px",background:SAGE,color:"white",border:"none",borderRadius:"14px",padding:"11px 26px",fontSize:"14px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>Registrar leitura</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── SIDEBAR ────────────────────────────────────────────────── */
 function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,showBackup,mob,onEntryClick,section,setSection}){
   const[tab,st]=useState("timeline");
@@ -1191,10 +1460,10 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
   /* tabs de seção */
   const SecTabs=()=>(
     <div style={{display:"flex",gap:"6px",marginBottom:mob?"12px":"0",marginTop:mob?"12px":"0"}}>
-      {[{k:"diary",icon:"📖",label:"Diário"},{k:"frases",icon:"🌸",label:"Frases"},{k:"devo",icon:"✝️",label:"Devo"}].map(({k,icon,label})=>(
+      {[{k:"diary",icon:"📖",label:"Diário"},{k:"frases",icon:"🌸",label:"Frases"},{k:"devo",icon:"✝️",label:"Devo"},{k:"livros",icon:"📚",label:"Livros"}].map(({k,icon,label})=>(
         <button key={k} onClick={()=>setSection(k)}
           style={{flex:1,padding:"7px 0",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"11px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,
-            background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":TERRACOTTA):"#F5EDE0",
+            background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",
             color:section===k?"white":"#8a7d70",transition:"all .15s"}}>
           {icon} {label}
         </button>
@@ -1291,7 +1560,13 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
           <Cal entries={entries} sel={selDate} onSel={d=>setSel(d)}/>
         </div>
       )}
-      <div style={{padding:"10px 18px",borderTop:"1px solid #EDE5DC",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      {section==="livros"&&(
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"20px",color:"#d5c8b8",textAlign:"center"}}>
+          <div style={{fontSize:"32px",marginBottom:"8px"}}>📚</div>
+          <p style={{fontSize:"12px"}}>Suas leituras aparecem no painel ao lado.</p>
+        </div>
+      )}
+      <div style={{padding:"10px 18px",borderTop:"1px solid #EDE5DC",display:section==="livros"?"none":"flex",justifyContent:"space-between",alignItems:"center"}}>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair da conta</button>
         <div style={{display:"flex",gap:"6px"}}>
           <button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"9px",padding:"6px 12px",fontSize:"11px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>📄 PDF</button>
@@ -1308,6 +1583,7 @@ function App(){
   const[scr,setSCR]=useState("loading");
   const[user,su]=useState(null);
   const[entries,se]=useState([]);
+  const[livros,sliv]=useState([]);
   const[selEntry,sse]=useState(null);
   const[selDate,ssd]=useState(new Date());
   const[stag,sst]=useState("");
@@ -1343,6 +1619,7 @@ function App(){
             const ents=await dbLoad();
             se(ents);
             setSCR("diary");
+            try{const ls=await dbLoadLivros();sliv(ls);}catch(e){console.error("Livros:",e);}
           }catch(err){
             console.error(err);
             alert("Erro ao carregar dados:\n\n"+err.message+"\n\nVerifique se a API do Google Sheets está ativada no seu projeto Google Cloud.");
@@ -1387,6 +1664,16 @@ function App(){
     catch(e){alert("Erro ao excluir: "+e.message);}
   };
 
+  const saveLivro=async(livro)=>{
+    await dbSaveLivro(livro);
+    sliv(prev=>prev.some(x=>x.id===livro.id)?prev.map(x=>x.id===livro.id?livro:x):[livro,...prev]);
+  };
+
+  const delLivro=async(id)=>{
+    await dbDeleteLivro(id);
+    sliv(prev=>prev.filter(l=>l.id!==id));
+  };
+
   const png=async()=>{
     if(!vRef.current||!window.html2canvas){alert("Aguarde o carregamento.");return;}
     try{const c=await window.html2canvas(vRef.current,{scale:2,useCORS:true,backgroundColor:null,logging:false});const a=document.createElement("a");a.download=`diario-${new Date(selEntry?.date||Date.now()).toLocaleDateString("pt-BR").replace(/\//g,"-")}.png`;a.href=c.toDataURL("image/png");a.click();}
@@ -1397,7 +1684,7 @@ function App(){
     if(gAccessToken&&window.google)google.accounts.oauth2.revoke(gAccessToken,()=>{});
     gAccessToken=null;su(null);se([]);sse(null);setSCR("login");
   };
-  const reloadEntries=async(importedEntries)=>{
+  const reloadEntries=async(importedEntries,importedLivros)=>{
     if(importedEntries){
       // Importação: mescla entradas importadas com as existentes
       se(prev=>{
@@ -1409,6 +1696,17 @@ function App(){
         });
         return[...atualizadas,...novas].sort((a,b)=>new Date(b.date)-new Date(a.date));
       });
+      if(importedLivros&&importedLivros.length>0){
+        sliv(prev=>{
+          const existingIds=new Set(prev.map(l=>l.id));
+          const novos=importedLivros.filter(l=>!existingIds.has(l.id));
+          const atualizados=prev.map(l=>{
+            const imp=importedLivros.find(i=>i.id===l.id);
+            return imp||l;
+          });
+          return[...atualizados,...novos].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+        });
+      }
     }else{
       try{const e=await dbLoad();se(e);}catch(e){console.error(e);}
     }
@@ -1430,14 +1728,14 @@ function App(){
   if(mob&&mobEnt&&selEntry&&selEntry.type==="frase")return(
     <><div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
       <FraseViewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry,new Date(selEntry.date),true)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: viewer diário */
   if(mob&&mobEnt&&selEntry)return(
     <><div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
       <Viewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: devo */
@@ -1445,8 +1743,8 @@ function App(){
     <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
       <div style={{padding:"14px 18px 10px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",gap:"6px"}}>
-          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"}].map(({k,icon})=>(
-            <button key={k} onClick={()=>setSec(k)} style={{padding:"6px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>{icon}</button>
+          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>(
+            <button key={k} onClick={()=>setSec(k)} style={{padding:"6px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>{icon}</button>
           ))}
         </div>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair</button>
@@ -1458,7 +1756,28 @@ function App(){
         <button onClick={()=>setSec("diary")} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📖</span>Diário</button>
         <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button><button onClick={()=>sbkp(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>💾</span>Backup</button>
       </div>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+  );
+
+  /* Mobile: livros */
+  if(mob&&section==="livros")return(
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
+      <div style={{padding:"14px 18px 10px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",gap:"6px"}}>
+          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>(
+            <button key={k} onClick={()=>setSec(k)} style={{padding:"6px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>{icon}</button>
+          ))}
+        </div>
+        <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair</button>
+      </div>
+      <div style={{flex:1,overflow:"hidden"}}>
+        <LivrosSection livros={livros} onSave={saveLivro} onDel={delLivro} mob={true}/>
+      </div>
+      <div style={{borderTop:"1px solid #EDE5DC",padding:"10px 28px 14px",display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",flexShrink:0}}>
+        <button onClick={()=>setSec("diary")} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📖</span>Diário</button>
+        <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button><button onClick={()=>sbkp(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>💾</span>Backup</button>
+      </div>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: frases grid */
@@ -1466,8 +1785,8 @@ function App(){
     <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",gap:"8px"}}>
-          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"}].map(({k,icon})=>(
-            <button key={k} onClick={()=>setSec(k)} style={{padding:"7px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>
+          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>(
+            <button key={k} onClick={()=>setSec(k)} style={{padding:"7px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>
               {icon}
             </button>
           ))}
@@ -1481,12 +1800,12 @@ function App(){
         <button onClick={()=>setSec("diary")} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📖</span>Diário</button>
         <button onClick={()=>spdf(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>📄</span>PDF</button><button onClick={()=>sbkp(true)} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px"}}><span style={{fontSize:"20px"}}>💾</span>Backup</button>
       </div>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Mobile: diário */
   if(mob)return(
-    <><Sidebar {...sbProps} mob={true} onEntryClick={e=>{sse(e);sme(true);}}/>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    <><Sidebar {...sbProps} mob={true} onEntryClick={e=>{sse(e);sme(true);}}/>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 
   /* Desktop */
@@ -1494,7 +1813,9 @@ function App(){
     <><div style={{display:"flex",height:"100vh",fontFamily:"'Lora',Georgia,serif",background:"#F7F3EE"}}>
       <Sidebar {...sbProps} mob={false}/>
       <main style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-        {section==="devo"?(
+        {section==="livros"?(
+          <LivrosSection livros={livros} onSave={saveLivro} onDel={delLivro} mob={false}/>
+        ):section==="devo"?(
           <DevoSection entries={entries} user={user} onSave={saveDevo} onDel={del} openEditor={e=>{sDE(e||null);sSDE(true);}} mob={false}/>
         ):section==="frases"?(
           <FrasesSection entries={entries} user={user} onSave={saveFrase} onDel={del} openFullEditor={e=>{sse(e);openEd(e,new Date(e.date),true);}} mob={false}/>
@@ -1511,7 +1832,7 @@ function App(){
           </div>
         )}
       </main>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
   );
 }
 
