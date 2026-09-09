@@ -2190,7 +2190,7 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
 
   if(mob){
     return(
-      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,position:"relative",paddingBottom:"70px"}}>
+      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,position:"relative",paddingBottom:"70px",boxSizing:"border-box"}}>
         {header}
         <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
           {section==="diary"&&(tab==="calendar"?<>{calSection}{tagSection}{timeline}</>:<>{tagSection}{timeline}</>)}
@@ -2400,7 +2400,7 @@ function App(){
 
   /* Mobile: devo */
   if(mob&&section==="devo")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px"}}>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px",boxSizing:"border-box"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:TH().text}}>✝️ Devocional</h1>
         <div style={{display:"flex",gap:"6px"}}>
@@ -2416,7 +2416,7 @@ function App(){
 
   /* Mobile: livros */
   if(mob&&section==="livros")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px"}}>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px",boxSizing:"border-box"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:TH().text}}>📚 Leituras</h1>
         <div style={{display:"flex",gap:"6px"}}>
@@ -2432,7 +2432,7 @@ function App(){
 
   /* Mobile: frases grid */
   if(mob&&section==="frases")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px"}}>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px",boxSizing:"border-box"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:TH().text}}>🌸 Frases</h1>
         <div style={{display:"flex",gap:"6px"}}>
