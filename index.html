@@ -733,8 +733,9 @@ function BackupModal({entries,livros,user,onImport,onClose}){
   const exportToDrive=async()=>{
     sex(true);sm("Salvando no Drive…");
     try{
+      const freshLivros=await dbLoadLivros(); // busca direto da planilha, evita dados desatualizados
       const fileName=`meu-diario-backup-${new Date().toLocaleDateString("pt-BR").replace(/\//g,"-")}.json`;
-      const data={version:2,exported_at:new Date().toISOString(),user:user?.email,entries:entries,livros:livrosList};
+      const data={version:2,exported_at:new Date().toISOString(),user:user?.email,entries:entries,livros:freshLivros};
       const content=JSON.stringify(data,null,2);
 
       // Find or create "Meu Diário" folder
