@@ -650,12 +650,18 @@ function FraseCard({entry,onFullEdit,onSave,onDel}){
           onChange={e=>{sTx(e.target.value);ar(e.target);}}
           onBlur={save}
           onKeyDown={e=>{if(e.key==="Escape")save();if(e.key==="Enter"&&e.ctrlKey)save();}}
-          style={{width:"100%",background:"transparent",border:"none",outline:"none",resize:"none",overflow:"hidden",fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||15}px`,lineHeight:1.7,color:tc,textAlign:"center",minHeight:"60px"}}
+          style={{width:"100%",background:"transparent",border:"none",outline:"none",resize:"none",overflow:"hidden",fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||19}px`,lineHeight:1.6,color:tc,textAlign:"center",minHeight:"60px"}}
         />
       ):(
-        <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||15}px`,lineHeight:1.7,color:tc,textAlign:"center",margin:0,wordBreak:"break-word"}}>{entry.content}</p>
+        <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:`${entry.fontSize||19}px`,lineHeight:1.6,color:tc,textAlign:"center",margin:0,wordBreak:"break-word"}}>{entry.content}</p>
       )}
-      {editing&&<p style={{fontSize:"10px",color:"rgba(0,0,0,0.3)",textAlign:"center",marginTop:"8px"}}>Clique fora ou Esc para salvar</p>}
+      {editing&&<p style={{fontSize:"12px",color:"rgba(0,0,0,0.3)",textAlign:"center",marginTop:"8px"}}>Clique fora ou Esc para salvar</p>}
+      {!editing&&(
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:"14px",paddingTop:"10px",borderTop:"1px solid rgba(0,0,0,0.08)"}}>
+          <span style={{fontSize:"12.5px",color:"rgba(0,0,0,0.45)"}}>🌸 frase</span>
+          <span style={{fontSize:"12.5px",color:"rgba(0,0,0,0.45)"}}>{new Date(entry.date).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"})}</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -686,7 +692,7 @@ function FrasesSection({entries,user,onSave,onDel,openFullEditor,mob}){
   const[creating,sc]=useState(false);
   const frases=entries.filter(e=>e.type==="frase").sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   const handleAdd=async(text)=>{
-    const entry={id:Date.now().toString(),date:new Date().toISOString(),content:text,tags:[],font:FONTS[1].value,bg:getRandomPastel(),fontSize:15,createdAt:new Date().toISOString(),type:"frase"};
+    const entry={id:Date.now().toString(),date:new Date().toISOString(),content:text,tags:[],font:FONTS[1].value,bg:getRandomPastel(),fontSize:19,createdAt:new Date().toISOString(),type:"frase"};
     await onSave(entry);
   };
   return(
@@ -694,22 +700,22 @@ function FrasesSection({entries,user,onSave,onDel,openFullEditor,mob}){
       {/* Cabeçalho */}
       <div style={{padding:"16px 24px 12px",borderBottom:"1px solid #EDE5DC",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div>
-          <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"18px",color:"#1a1410",letterSpacing:"-0.2px"}}>Frases</h2>
-          <p style={{fontSize:"11px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{frases.length} {frases.length===1?"frase":"frases"}</p>
+          <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:mob?"26px":"22px",color:"#1a1410",letterSpacing:"-0.2px"}}>Frases</h2>
+          <p style={{fontSize:"14px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{frases.length} {frases.length===1?"frase":"frases"}</p>
         </div>
-        <button onClick={()=>sc(true)} style={{background:LILAC,color:"#3a2e5a",border:"none",borderRadius:"11px",padding:"8px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif",fontWeight:600}}>+ Nova frase</button>
+        <button onClick={()=>sc(true)} style={{background:LILAC,color:"#3a2e5a",border:"none",borderRadius:"20px",padding:"10px 18px",fontSize:"14px",cursor:"pointer",fontFamily:"'Roboto',sans-serif",fontWeight:600,boxShadow:"0 2px 6px rgba(200,180,232,0.5)"}}>+ Nova frase</button>
       </div>
       {/* Conteúdo */}
-      <div style={{flex:1,overflowY:"auto",padding:mob?"12px 14px":"20px 24px"}}>
+      <div style={{flex:1,overflowY:"auto",padding:mob?"14px 16px":"20px 24px"}}>
         {creating&&<FraseCreator onAdd={handleAdd} onClose={()=>sc(false)}/>}
         {frases.length===0&&!creating?(
           <div style={{textAlign:"center",padding:"60px 0",color:"#d5c8b8"}}>
             <div style={{fontSize:"40px",marginBottom:"12px"}}>🌸</div>
-            <p style={{fontSize:"14px"}}>Nenhuma frase ainda.</p>
-            <p style={{fontSize:"12px",marginTop:"4px",color:"#e0d4c8"}}>Clique em "Nova frase" para começar.</p>
+            <p style={{fontSize:"16px"}}>Nenhuma frase ainda.</p>
+            <p style={{fontSize:"14px",marginTop:"4px",color:"#e0d4c8"}}>Clique em "Nova frase" para começar.</p>
           </div>
         ):(
-          <div style={{display:"grid",gridTemplateColumns:mob?"repeat(2,1fr)":"repeat(auto-fill,minmax(180px,1fr))",gap:"12px"}}>
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"repeat(auto-fill,minmax(220px,1fr))",gap:"14px"}}>
             {frases.map(e=>(
               <FraseCard key={e.id} entry={e}
                 onSave={onSave}
@@ -1318,26 +1324,24 @@ function LivroCard({livro,onClick,active}){
   const st=LIVRO_STATUS.find(s=>s.k===livro.status)||LIVRO_STATUS[1];
   const bg=livro.cardColor||"#FFFFFF";
   return(
-    <div onClick={onClick} style={{background:bg,border:`1px solid ${active?TERRACOTTA:"rgba(0,0,0,0.06)"}`,boxShadow:active?"none":"0 1px 4px rgba(0,0,0,0.04)",borderRadius:"14px",padding:"14px",marginBottom:"10px",cursor:"pointer",transition:"all .15s",display:"flex",gap:"12px"}}>
+    <div onClick={onClick} style={{background:bg,border:`1px solid ${active?TERRACOTTA:"rgba(0,0,0,0.06)"}`,boxShadow:active?"none":"0 1px 4px rgba(0,0,0,0.04)",borderRadius:"18px",padding:"16px",marginBottom:"12px",cursor:"pointer",transition:"all .15s",display:"flex",gap:"14px"}}>
       {livro.cover?(
-        <img src={livro.cover} alt="" style={{width:"42px",height:"58px",objectFit:"cover",borderRadius:"6px",flexShrink:0,boxShadow:"0 2px 6px rgba(0,0,0,0.12)"}}/>
+        <img src={livro.cover} alt="" style={{width:"64px",height:"88px",objectFit:"cover",borderRadius:"8px",flexShrink:0,boxShadow:"0 2px 8px rgba(0,0,0,0.14)"}}/>
       ):(
-        <div style={{width:"42px",height:"58px",borderRadius:"6px",flexShrink:0,background:"#F5EDE0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px"}}>{livro.format==="audiolivro"?"🎧":"📘"}</div>
+        <div style={{width:"64px",height:"88px",borderRadius:"8px",flexShrink:0,background:"#F5EDE0",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"26px"}}>{livro.format==="audiolivro"?"🎧":"📘"}</div>
       )}
       <div style={{flex:1,minWidth:0}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"8px"}}>
-          <div style={{flex:1,minWidth:0}}>
-            <p style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#1a1410",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.title||"Sem título"}</p>
-            <p style={{fontSize:"14px",color:"#8a7d70",marginTop:"2px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{livro.author||"Autor desconhecido"}</p>
-          </div>
-          {livro.cover&&<span style={{fontSize:"16px",flexShrink:0}}>{livro.format==="audiolivro"?"🎧":"📘"}</span>}
+        <div style={{display:"flex",gap:"6px",alignItems:"center",marginBottom:"6px",flexWrap:"wrap"}}>
+          <span style={{fontSize:"11px",fontWeight:700,color:"white",background:st.color,borderRadius:"8px",padding:"4px 10px",letterSpacing:"0.3px"}}>{st.label.toUpperCase()}</span>
+          <span style={{fontSize:"13px",color:"#8a7d70"}}>{livro.format==="audiolivro"?"🎧 Audiolivro":"📘 Físico"}</span>
+          {livro.category&&<span style={{fontSize:"12px",color:"#8a7d70",background:"rgba(0,0,0,0.05)",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
         </div>
-        <div style={{display:"flex",gap:"6px",alignItems:"center",marginTop:"8px",flexWrap:"wrap"}}>
-          <span style={{fontSize:"12px",fontWeight:700,color:"white",background:st.color,borderRadius:"8px",padding:"3px 9px"}}>{st.label}</span>
-          {livro.category&&<span style={{fontSize:"12px",color:"#8a7d70",background:"#F5EDE0",borderRadius:"8px",padding:"3px 9px"}}>{livro.category}</span>}
-          {livro.rating>0&&<span style={{fontSize:"13px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
-          {livro.mood&&(()=>{const m=LIVRO_MOODS.find(x=>x.k===livro.mood);return m?<span title={m.label} style={{fontSize:"14px"}}>{m.emoji}</span>:null;})()}
-          {livro.format==="fisico"&&livro.pages>0&&<span style={{fontSize:"12px",color:"#a89a8a"}}>{livro.pages}p</span>}
+        <p style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",fontWeight:700,color:"#1a1410",lineHeight:1.25,marginBottom:"3px"}}>{livro.title||"Sem título"}</p>
+        <p style={{fontSize:"15px",color:"#8a7d70",fontStyle:"italic"}}>{livro.author||"Autor desconhecido"}</p>
+        <div style={{display:"flex",gap:"10px",alignItems:"center",marginTop:"8px",flexWrap:"wrap"}}>
+          {livro.rating>0&&<span style={{fontSize:"14px"}}>{"★".repeat(livro.rating)}<span style={{color:"#e0d4c8"}}>{"★".repeat(5-livro.rating)}</span></span>}
+          {livro.mood&&(()=>{const m=LIVRO_MOODS.find(x=>x.k===livro.mood);return m?<span title={m.label} style={{fontSize:"15px"}}>{m.emoji}</span>:null;})()}
+          {livro.format==="fisico"&&livro.pages>0&&<span style={{fontSize:"13px",color:"#a89a8a"}}>{livro.pages}p</span>}
           {livro.format==="audiolivro"&&livro.durationMin>0&&<span style={{fontSize:"12px",color:"#a89a8a"}}>{Math.floor(livro.durationMin/60)}h{String(livro.durationMin%60).padStart(2,"0")}</span>}
         </div>
       </div>
@@ -1762,23 +1766,23 @@ function LivrosSection({livros,onSave,onDel,mob}){
       <div style={{width:mob?"100%":"320px",minWidth:mob?"100%":"320px",display:mob&&(editing||showDash)?"none":"flex",flexDirection:"column",borderRight:mob?"none":"1px solid #EDE5DC",background:"white",overflow:"hidden"}}>
         <div style={{padding:"18px 18px 12px",borderBottom:"1px solid #EDE5DC",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"19px",color:"#1a1410"}}>📚 Leituras</h2>
-            <p style={{fontSize:"13px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
+            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"26px",color:"#1a1410"}}>📚 Leituras</h2>
+            <p style={{fontSize:"15px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
           </div>
           <div style={{display:"flex",gap:"6px"}}>
-            <button onClick={()=>{se_(false);ss(null);sDash(true);}} title="Resumo do ano" style={{background:"#F5EDE0",color:"#6a5a4a",border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.12)"}}>📊</button>
-            <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"20px",padding:"9px 16px",fontSize:"14px",cursor:"pointer",fontFamily:"'Roboto',sans-serif",fontWeight:500,boxShadow:"0 2px 6px rgba(127,160,122,0.4)"}}>+ Novo</button>
+            <button onClick={()=>{se_(false);ss(null);sDash(true);}} title="Resumo do ano" style={{background:"#F5EDE0",color:"#6a5a4a",border:"none",borderRadius:"50%",width:"40px",height:"40px",fontSize:"16px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.12)"}}>📊</button>
+            <button onClick={openNew} style={{background:SAGE,color:"white",border:"none",borderRadius:"22px",padding:"11px 20px",fontSize:"15px",cursor:"pointer",fontFamily:"'Roboto',sans-serif",fontWeight:600,boxShadow:"0 2px 6px rgba(127,160,122,0.4)"}}>+ Novo Livro</button>
           </div>
         </div>
-        <div style={{display:"flex",gap:"5px",padding:"10px 14px 0"}}>
+        <div style={{display:"flex",gap:"6px",padding:"12px 14px 0"}}>
           {[{k:"lista",label:"📋 Lista"},{k:"estante",label:"📚 Estante"},{k:"humor",label:"🕊️ Humor"}].map(v=>(
-            <button key={v.k} onClick={()=>sv(v.k)} style={{flex:1,padding:"6px 4px",borderRadius:"9px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:view===v.k?700:400,background:view===v.k?TERRACOTTA:"#F5EDE0",color:view===v.k?"white":"#8a7d70"}}>{v.label}</button>
+            <button key={v.k} onClick={()=>sv(v.k)} style={{flex:1,padding:"9px 4px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Roboto',sans-serif",fontWeight:view===v.k?700:500,background:view===v.k?TERRACOTTA:"#F5EDE0",color:view===v.k?"white":"#8a7d70",boxShadow:view===v.k?"0 2px 6px rgba(0,0,0,0.15)":"none"}}>{v.label}</button>
           ))}
         </div>
         {view!=="humor"&&(
-          <div style={{display:"flex",gap:"5px",padding:"10px 14px 0",flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:"6px",padding:"12px 14px 0",flexWrap:"wrap"}}>
             {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
-              <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"13px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70"}}>{s.label} ({counts[s.k]})</span>
+              <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"14px",padding:"6px 12px",borderRadius:"14px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70",fontWeight:filter===s.k?600:400}}>{s.label} ({counts[s.k]})</span>
             ))}
           </div>
         )}
@@ -1833,13 +1837,13 @@ const NAV_ITEMS=[
 ];
 function BottomNav({section,setSection}){
   return(
-    <div style={{display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",borderTop:"1px solid #EDE5DC",padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",flexShrink:0}}>
+    <div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:20,display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",borderTop:"1px solid #EDE5DC",padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",boxShadow:"0 -2px 10px rgba(0,0,0,0.06)"}}>
       {NAV_ITEMS.map(({k,icon,label,color})=>{
         const active=section===k;
         return(
-          <button key={k} onClick={()=>setSection(k)} style={{background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 14px",borderRadius:"18px",background:active?color+"22":"transparent",transition:"background .15s"}}>
-            <span style={{fontSize:"19px"}}>{icon}</span>
-            <span style={{fontSize:"10.5px",fontFamily:"'Roboto',sans-serif",fontWeight:active?700:400,color:active?color:"#a89a8a"}}>{label}</span>
+          <button key={k} onClick={()=>setSection(k)} style={{background:active?color+"22":"transparent",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 14px",borderRadius:"18px",transition:"background .15s"}}>
+            <span style={{fontSize:"20px"}}>{icon}</span>
+            <span style={{fontSize:"11.5px",fontFamily:"'Roboto',sans-serif",fontWeight:active?700:400,color:active?color:"#a89a8a"}}>{label}</span>
           </button>
         );
       })}
@@ -1939,7 +1943,7 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
 
   if(mob){
     return(
-      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"white",position:"relative"}}>
+      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"white",position:"relative",paddingBottom:"70px"}}>
         {header}
         <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
           {section==="diary"&&(tab==="calendar"?<>{calSection}{tagSection}{timeline}</>:<>{tagSection}{timeline}</>)}
@@ -2146,7 +2150,7 @@ function App(){
 
   /* Mobile: devo */
   if(mob&&section==="devo")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#1a1410"}}>✝️ Devocional</h1>
         <div style={{display:"flex",gap:"6px"}}>
@@ -2164,7 +2168,7 @@ function App(){
 
   /* Mobile: livros */
   if(mob&&section==="livros")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#1a1410"}}>📚 Leituras</h1>
         <div style={{display:"flex",gap:"6px"}}>
@@ -2182,7 +2186,7 @@ function App(){
 
   /* Mobile: frases grid */
   if(mob&&section==="frases")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#1a1410"}}>🌸 Frases</h1>
         <div style={{display:"flex",gap:"6px"}}>
