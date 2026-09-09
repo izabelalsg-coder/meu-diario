@@ -2082,6 +2082,7 @@ function BottomNav({section,setSection}){
 /* ── SIDEBAR ────────────────────────────────────────────────── */
 function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,open,onDel,logout,showPdf,showBackup,openSettings,mob,onEntryClick,section,setSection}){
   const[tab,st]=useState("timeline");
+  const[showTags,sST]=useState(false);
   const diaryEntries=entries.filter(e=>!e.type||e.type==="diary");
   const tags=[...new Set(diaryEntries.flatMap(e=>e.tags||[]))];
   const fil=diaryEntries.filter(e=>!stag||(e.tags||[]).includes(stag)).sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -2142,11 +2143,16 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
 
   const tagSection=tags.length>0&&(
     <div style={{padding:mob?"12px 0":"10px 18px",borderBottom:mob?"none":"1px solid #EDE5DC"}}>
-      <p style={{fontSize:"12px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"7px"}}>Filtrar por tag</p>
-      <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
-        <span onClick={()=>sstag("")} style={ch(!stag)}>Todos</span>
-        {tags.map(t=><span key={t} onClick={()=>sstag(stag===t?"":t)} style={ch(stag===t)}>#{t}</span>)}
-      </div>
+      <button onClick={()=>sST(!showTags)} style={{display:"flex",alignItems:"center",gap:"6px",background:"none",border:"none",cursor:"pointer",fontSize:"12px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",padding:0}}>
+        <span>Filtrar por tag{stag?` · #${stag}`:""}</span>
+        <span style={{fontSize:"10px",transform:showTags?"rotate(180deg)":"none",transition:"transform .15s"}}>▼</span>
+      </button>
+      {showTags&&(
+        <div style={{display:"flex",flexWrap:"wrap",gap:"5px",marginTop:"9px"}}>
+          <span onClick={()=>sstag("")} style={ch(!stag)}>Todos</span>
+          {tags.map(t=><span key={t} onClick={()=>sstag(stag===t?"":t)} style={ch(stag===t)}>#{t}</span>)}
+        </div>
+      )}
     </div>
   );
 
