@@ -509,13 +509,13 @@ function EntryCard({entry,active,onClick}){
   const{dn,ms,yr}=pdi(entry.date);const dk=dark(entry.bg||"#FAF7F0");
   const tc=dk?"rgba(255,255,255,0.88)":"#1a1410";const d=dk?"rgba(255,255,255,0.35)":"#a89888";
   return(
-    <div onClick={onClick} style={{background:entry.bg||"#FAF7F0",borderRadius:"14px",padding:"13px 13px 11px",cursor:"pointer",marginBottom:"8px",border:`2px solid ${active?TERRACOTTA:"transparent"}`,boxShadow:active?"0 2px 8px rgba(0,0,0,0.10)":"0 1px 3px rgba(0,0,0,0.06)",transition:"border-color .15s,transform .1s,box-shadow .15s"}}
+    <div onClick={onClick} style={{background:entry.bg||"#FAF7F0",borderRadius:"16px",padding:"17px 17px 14px",cursor:"pointer",marginBottom:"12px",border:`2px solid ${active?TERRACOTTA:"transparent"}`,boxShadow:active?"0 2px 8px rgba(0,0,0,0.10)":"0 1px 3px rgba(0,0,0,0.06)",transition:"border-color .15s,transform .1s,box-shadow .15s"}}
       onMouseEnter={e=>{if(!active){e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.12)";}}} onMouseLeave={e=>{e.currentTarget.style.transform="";if(!active)e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.06)";}}>
-      <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:"12px",color:tc,marginBottom:"8px",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{entry.content}</p>
-      {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"8px"}}>{entry.tags.slice(0,3).map(t=><span key={t} style={{fontSize:"10px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"4px",padding:"1px 5px"}}>#{t}</span>)}</div>}
-      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:"4px"}}>
-        <span style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",fontWeight:700,color:tc,lineHeight:1}}>{dn}</span>
-        <div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{ms}.</div><div style={{fontSize:"9px",color:d,lineHeight:1.2}}>{yr}</div></div>
+      <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:"16px",color:tc,marginBottom:"11px",lineHeight:1.65,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{entry.content}</p>
+      {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:"5px",flexWrap:"wrap",marginBottom:"10px"}}>{entry.tags.slice(0,3).map(t=><span key={t} style={{fontSize:"12.5px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"6px",padding:"2px 8px"}}>#{t}</span>)}</div>}
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:"5px"}}>
+        <span style={{fontFamily:"'Playfair Display',serif",fontSize:"27px",fontWeight:700,color:tc,lineHeight:1}}>{dn}</span>
+        <div><div style={{fontSize:"11.5px",color:d,lineHeight:1.2}}>{ms}.</div><div style={{fontSize:"11.5px",color:d,lineHeight:1.2}}>{yr}</div></div>
       </div>
     </div>
   );
@@ -1751,6 +1751,7 @@ function LivrosSection({livros,onSave,onDel,mob}){
   const[filter,sf]=useState("todos");
   const[view,sv]=useState("lista");
   const[showDash,sDash]=useState(false);
+  const[showFilters,sSF]=useState(false);
 
   const filtered = filter==="todos" ? livros : livros.filter(l=>l.status===filter);
   const counts = {todos:livros.length,quero:livros.filter(l=>l.status==="quero").length,
@@ -1766,7 +1767,7 @@ function LivrosSection({livros,onSave,onDel,mob}){
       <div style={{width:mob?"100%":"320px",minWidth:mob?"100%":"320px",display:mob&&(editing||showDash)?"none":"flex",flexDirection:"column",borderRight:mob?"none":"1px solid #EDE5DC",background:"white",overflow:"hidden"}}>
         <div style={{padding:"18px 18px 12px",borderBottom:"1px solid #EDE5DC",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"26px",color:"#1a1410"}}>📚 Leituras</h2>
+            {!mob&&<h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"26px",color:"#1a1410"}}>📚 Leituras</h2>}
             <p style={{fontSize:"15px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{livros.length} {livros.length===1?"livro":"livros"}</p>
           </div>
           <div style={{display:"flex",gap:"6px"}}>
@@ -1780,10 +1781,18 @@ function LivrosSection({livros,onSave,onDel,mob}){
           ))}
         </div>
         {view!=="humor"&&(
-          <div style={{display:"flex",gap:"6px",padding:"12px 14px 0",flexWrap:"wrap"}}>
-            {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
-              <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"14px",padding:"6px 12px",borderRadius:"14px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70",fontWeight:filter===s.k?600:400}}>{s.label} ({counts[s.k]})</span>
-            ))}
+          <div style={{padding:"12px 14px 0"}}>
+            <button onClick={()=>sSF(!showFilters)} style={{display:"flex",alignItems:"center",gap:"6px",background:"none",border:"none",cursor:"pointer",fontSize:"13px",color:"#8a7d70",fontFamily:"'Roboto',sans-serif",padding:"4px 2px"}}>
+              <span>🔍 Filtros{filter!=="todos"?` · ${LIVRO_STATUS.find(s=>s.k===filter)?.label}`:""}</span>
+              <span style={{fontSize:"11px",transform:showFilters?"rotate(180deg)":"none",transition:"transform .15s"}}>▼</span>
+            </button>
+            {showFilters&&(
+              <div style={{display:"flex",gap:"6px",flexWrap:"wrap",marginTop:"8px"}}>
+                {[{k:"todos",label:"Todos"},...LIVRO_STATUS].map(s=>(
+                  <span key={s.k} onClick={()=>sf(s.k)} style={{fontSize:"14px",padding:"6px 12px",borderRadius:"14px",cursor:"pointer",background:filter===s.k?(s.color||TERRACOTTA):"#F5EDE0",color:filter===s.k?"white":"#8a7d70",fontWeight:filter===s.k?600:400}}>{s.label} ({counts[s.k]})</span>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <div style={{flex:1,overflowY:"auto",padding:view==="lista"?"12px 14px":"12px 10px"}}>
@@ -1858,7 +1867,7 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
   const tags=[...new Set(diaryEntries.flatMap(e=>e.tags||[]))];
   const fil=diaryEntries.filter(e=>!stag||(e.tags||[]).includes(stag)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const grp=fil.reduce((a,e)=>{const d=new Date(e.date);const k=`${MPT[d.getMonth()]} ${d.getFullYear()}`;(a[k]=a[k]||[]).push(e);return a;},{});
-  const ch=active=>({fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",userSelect:"none",background:active?TERRACOTTA:"#F5EDE0",color:active?"white":"#8a7d70"});
+  const ch=active=>({fontSize:"14px",padding:"6px 12px",borderRadius:"14px",cursor:"pointer",userSelect:"none",background:active?TERRACOTTA:"#F5EDE0",color:active?"white":"#8a7d70"});
 
   /* tabs de seção (desktop) */
   const SecTabs=()=>(
@@ -1916,7 +1925,7 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
 
   const tagSection=tags.length>0&&(
     <div style={{padding:mob?"12px 0":"10px 18px",borderBottom:mob?"none":"1px solid #EDE5DC"}}>
-      <p style={{fontSize:"9px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"7px"}}>Filtrar por tag</p>
+      <p style={{fontSize:"12px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",marginBottom:"7px"}}>Filtrar por tag</p>
       <div style={{display:"flex",flexWrap:"wrap",gap:"5px"}}>
         <span onClick={()=>sstag("")} style={ch(!stag)}>Todos</span>
         {tags.map(t=><span key={t} onClick={()=>sstag(stag===t?"":t)} style={ch(stag===t)}>#{t}</span>)}
@@ -1934,7 +1943,7 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
         </div>
       ):Object.entries(grp).map(([m,es])=>(
         <div key={m}>
-          <div style={{fontSize:"9px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",padding:mob?"12px 0 6px":"10px 4px 5px"}}>{m}</div>
+          <div style={{fontSize:"12px",color:"#c5b8a8",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",padding:mob?"12px 0 6px":"10px 4px 5px"}}>{m}</div>
           {es.map(e=><EntryCard key={e.id} entry={e} active={selEntry?.id===e.id} onClick={()=>{setSE(e);if(onEntryClick)onEntryClick(e);}}/>)}
         </div>
       ))}
@@ -2170,7 +2179,7 @@ function App(){
   if(mob&&section==="livros")return(
     <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#1a1410"}}>📚 Leituras</h1>
+        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#1a1410"}}>📚 Leituras</h1>
         <div style={{display:"flex",gap:"6px"}}>
           <button onClick={()=>spdf(true)} title="PDF" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>📄</button>
           <button onClick={()=>sbkp(true)} title="Backup" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>💾</button>
