@@ -1,24 +1,37 @@
 {
   "name": "Meu Diário",
-  "short_name": "Diário",
-  "description": "Diário pessoal privado com sincronização em nuvem",
+  "short_name": "Meu Diário",
+  "description": "Seu diário pessoal e privado",
   "start_url": "/meu-diario/",
   "scope": "/meu-diario/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#FAF7F0",
   "theme_color": "#C4785A",
+  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f33f.png",
-      "sizes": "72x72",
-      "type": "image/png"
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/svg/1f33f.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
