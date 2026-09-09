@@ -221,10 +221,42 @@ const PASTEL_COLORS=[
 const EMOJIS=["❤️","✨","🌸","🌿","🌙","☀️","🕊️","📖","🙏","💭","🌊","🦋","🍃","🌺","⭐","💫","🎵","🌹","🍂","❄️","🌈","💕","🔥","🌻","🫶","😊","😔","😌","🥹","💪","🎯","📝","💡","🌏","🏡","☕","🧘","🌷","🦜","🐚"];
 const MPT=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const DS=["D","S","T","Q","Q","S","S"];
-const LILAC="#C8B4E8";
-const AMBER="#D4A843";
-const TERRACOTTA="#C4785A";
-const SAGE="#7FA07A";
+let LILAC="#C8B4E8";
+let AMBER="#D4A843";
+let TERRACOTTA="#C4785A";
+let SAGE="#7FA07A";
+
+/* ── TEMA: paletas e modo claro/escuro ─────────────────────── */
+const PALETTES=[
+  {k:"terracota",name:"Clássico Terracota & Âmbar",desc:"Tons acolhedores originais do Meu Diário.",primary:"#C4785A",secondary:"#D4A843"},
+  {k:"vinho",name:"Vinho Nobre & Rosé",desc:"Elegante, intimista e com toque romântico suave.",primary:"#A14E5C",secondary:"#E8A8B0"},
+  {k:"salvia",name:"Sálvia & Menta Botânica",desc:"Sensação de paz, frescor natural e serenidade.",primary:"#5C8A6E",secondary:"#8FD6BD"},
+  {k:"lavanda",name:"Lavanda & Ametista",desc:"Tons espirituais, contemplativos e poéticos.",primary:"#8B6FC9",secondary:"#C8B4E8"},
+  {k:"indigo",name:"Azul Índigo & Céu Sereno",desc:"Profundidade, clareza mental e tranquilidade.",primary:"#3E5C8A",secondary:"#8FB8E8"},
+  {k:"cacau",name:"Cacau & Caramelo Quente",desc:"Tons terrosos refinados que lembram café e livros antigos.",primary:"#6B4A38",secondary:"#C99A6A"},
+  {k:"ouro",name:"Ouro Real & Âmbar Sol",desc:"Brilho nobre, inspirador e iluminado.",primary:"#C9971F",secondary:"#F0C860"},
+  {k:"esmeralda",name:"Esmeralda & Turquesa",desc:"Harmonia refinada entre verde precioso e mar caribenho.",primary:"#1E8A6E",secondary:"#5EC9C0"}
+];
+let DARK_MODE=false;
+let PALETTE_KEY="terracota";
+const THEME_LIGHT={bg:"#FAF7F0",surface:"white",surfaceAlt:"#F7F3EE",chip:"#F5EDE0",text:"#1a1410",muted:"#8a7d70",faint:"#c5b8a8",border:"#EDE5DC"};
+const THEME_DARK={bg:"#1B1815",surface:"#26221E",surfaceAlt:"#211D1A",chip:"#332D28",text:"#F2EAE1",muted:"#C4B4A4",faint:"#8f8074",border:"#3A332C"};
+function TH(){return DARK_MODE?THEME_DARK:THEME_LIGHT;}
+function applyPalette(key){
+  const p=PALETTES.find(x=>x.k===key)||PALETTES[0];
+  PALETTE_KEY=p.k;TERRACOTTA=p.primary;AMBER=p.secondary;
+  try{localStorage.setItem("meuDiarioTheme",JSON.stringify({dark:DARK_MODE,palette:PALETTE_KEY}));}catch(e){}
+}
+function applyDark(v){
+  DARK_MODE=v;
+  try{localStorage.setItem("meuDiarioTheme",JSON.stringify({dark:DARK_MODE,palette:PALETTE_KEY}));}catch(e){}
+}
+(function initTheme(){
+  try{
+    const saved=JSON.parse(localStorage.getItem("meuDiarioTheme")||"null");
+    if(saved){DARK_MODE=!!saved.dark;applyPalette(saved.palette||"terracota");}
+  }catch(e){}
+})();
 const LIVRO_STATUS=[{k:"quero",label:"Quero ler/ouvir",color:"#C8B4E8"},{k:"lendo",label:"Iniciado",color:"#D4A843"},{k:"lido",label:"Concluído",color:"#7FA07A"}];
 const LIVRO_CATS=["Teologia","Direito","Maternidade","Ficção","Desenvolvimento pessoal","Biografia","Outro"];
 const LIVRO_MOODS=[
@@ -1837,6 +1869,185 @@ function LivrosSection({livros,onSave,onDel,mob}){
   );
 }
 
+/* ── PAINEL DE AJUSTES & CONFIGURAÇÕES ─────────────────────── */
+function SettingsModal({onClose,showPdf,showBackup,logout,refreshTheme}){
+  const[view,sView]=useState("main"); // main | colors
+  const[colorTab,sColorTab]=useState("presets"); // presets | custom
+  const[draftDark,sDD]=useState(DARK_MODE);
+  const[draftPalette,sDP]=useState(PALETTE_KEY);
+  const[customPrimary,sCP]=useState(TERRACOTTA);
+  const[customSecondary,sCS]=useState(AMBER);
+  const t=draftDark?THEME_DARK:THEME_LIGHT;
+  const previewPrimary=colorTab==="custom"?customPrimary:(PALETTES.find(p=>p.k===draftPalette)||PALETTES[0]).primary;
+  const previewSecondary=colorTab==="custom"?customSecondary:(PALETTES.find(p=>p.k===draftPalette)||PALETTES[0]).secondary;
+
+  const save=()=>{
+    applyDark(draftDark);
+    if(colorTab==="custom"){
+      TERRACOTTA=customPrimary;AMBER=customSecondary;PALETTE_KEY="custom";
+      try{localStorage.setItem("meuDiarioTheme",JSON.stringify({dark:draftDark,palette:"custom",custom:{primary:customPrimary,secondary:customSecondary}}));}catch(e){}
+    }else{
+      applyPalette(draftPalette);
+    }
+    refreshTheme();
+    onClose();
+  };
+  const restoreDefault=()=>{sDD(false);sDP("terracota");sColorTab("presets");};
+
+  const sheetStyle={position:"fixed",inset:0,background:"rgba(0,0,0,0.35)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100};
+  const cardStyle={background:t.surfaceAlt,width:"100%",maxWidth:"480px",maxHeight:"92vh",overflowY:"auto",borderRadius:"24px 24px 0 0",boxShadow:"0 -4px 30px rgba(0,0,0,0.25)"};
+
+  if(view==="colors"){
+    return(
+      <div style={sheetStyle} onClick={onClose}>
+        <div style={cardStyle} onClick={e=>e.stopPropagation()}>
+          <div style={{padding:"22px 22px 16px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div style={{display:"flex",gap:"12px"}}>
+              <div style={{width:"44px",height:"44px",borderRadius:"12px",background:previewPrimary+"33",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"20px",flexShrink:0}}>🎨</div>
+              <div>
+                <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"21px",color:t.text,lineHeight:1.2}}>Personalização de Cores & Tema</h2>
+                <p style={{fontSize:"13px",color:t.muted,marginTop:"3px"}}>Personalize o visual do seu diário</p>
+              </div>
+            </div>
+            <button onClick={onClose} style={{background:"none",border:"none",fontSize:"20px",cursor:"pointer",color:t.muted}}>✕</button>
+          </div>
+
+          <div style={{padding:"0 22px 8px"}}>
+            <p style={{fontSize:"11px",fontWeight:700,color:t.muted,letterSpacing:"1px",marginBottom:"10px"}}>1. MODO DE APARÊNCIA</p>
+            <div style={{display:"flex",gap:"10px",marginBottom:"20px"}}>
+              <button onClick={()=>sDD(false)} style={{flex:1,textAlign:"left",padding:"14px",borderRadius:"16px",border:`2px solid ${!draftDark?previewPrimary:t.border}`,background:t.surface,cursor:"pointer"}}>
+                <div style={{fontSize:"20px",marginBottom:"6px"}}>☀️</div>
+                <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:t.text}}>Modo Claro</p>
+                <p style={{fontSize:"11.5px",color:t.muted,marginTop:"2px"}}>Fundo claro e suave para o dia a dia</p>
+              </button>
+              <button onClick={()=>sDD(true)} style={{flex:1,textAlign:"left",padding:"14px",borderRadius:"16px",border:`2px solid ${draftDark?previewPrimary:t.border}`,background:t.surface,cursor:"pointer"}}>
+                <div style={{fontSize:"20px",marginBottom:"6px"}}>🌙</div>
+                <p style={{fontFamily:"'Playfair Display',serif",fontSize:"15px",color:t.text}}>Modo Escuro</p>
+                <p style={{fontSize:"11.5px",color:t.muted,marginTop:"2px"}}>Conforto visual para leitura noturna</p>
+              </button>
+            </div>
+
+            <div style={{display:"flex",gap:"18px",borderBottom:`1px solid ${t.border}`,marginBottom:"16px"}}>
+              <button onClick={()=>sColorTab("presets")} style={{background:"none",border:"none",cursor:"pointer",padding:"0 0 10px",fontSize:"13.5px",fontFamily:"'Roboto',sans-serif",fontWeight:600,color:colorTab==="presets"?previewPrimary:t.muted,borderBottom:colorTab==="presets"?`2px solid ${previewPrimary}`:"2px solid transparent"}}>Paletas Prontas</button>
+              <button onClick={()=>sColorTab("custom")} style={{background:"none",border:"none",cursor:"pointer",padding:"0 0 10px",fontSize:"13.5px",fontFamily:"'Roboto',sans-serif",fontWeight:600,color:colorTab==="custom"?previewPrimary:t.muted,borderBottom:colorTab==="custom"?`2px solid ${previewPrimary}`:"2px solid transparent"}}>Escolha Livre</button>
+            </div>
+
+            {colorTab==="presets"?(
+              <div style={{display:"flex",flexDirection:"column",gap:"10px",marginBottom:"20px"}}>
+                {PALETTES.map(p=>(
+                  <button key={p.k} onClick={()=>sDP(p.k)} style={{display:"flex",alignItems:"center",gap:"14px",textAlign:"left",padding:"14px",borderRadius:"16px",border:`2px solid ${draftPalette===p.k?p.primary:t.border}`,background:t.surface,cursor:"pointer"}}>
+                    <div style={{width:"36px",height:"36px",borderRadius:"10px",flexShrink:0,background:`linear-gradient(135deg,${p.primary} 50%,${p.secondary} 50%)`}}/>
+                    <div style={{flex:1}}>
+                      <p style={{fontFamily:"'Playfair Display',serif",fontSize:"14.5px",color:t.text}}>{p.name}</p>
+                      <p style={{fontSize:"12px",color:t.muted,marginTop:"1px"}}>{p.desc}</p>
+                    </div>
+                    {draftPalette===p.k&&<span style={{color:p.primary,fontSize:"16px"}}>✓</span>}
+                  </button>
+                ))}
+              </div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:"14px",marginBottom:"20px"}}>
+                <label style={{fontSize:"13px",color:t.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>Cor primária
+                  <input type="color" value={customPrimary} onChange={e=>sCP(e.target.value)} style={{width:"44px",height:"32px",border:"none",borderRadius:"8px",cursor:"pointer"}}/>
+                </label>
+                <label style={{fontSize:"13px",color:t.muted,display:"flex",justifyContent:"space-between",alignItems:"center"}}>Cor secundária
+                  <input type="color" value={customSecondary} onChange={e=>sCS(e.target.value)} style={{width:"44px",height:"32px",border:"none",borderRadius:"8px",cursor:"pointer"}}/>
+                </label>
+              </div>
+            )}
+
+            <p style={{fontSize:"11px",fontWeight:700,color:t.muted,letterSpacing:"1px",marginBottom:"10px"}}>3. VISUALIZAÇÃO PRÉVIA EM TEMPO REAL</p>
+            <div style={{background:t.surface,border:`1px solid ${t.border}`,borderRadius:"16px",padding:"16px",marginBottom:"20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"10px"}}>
+                <span style={{fontFamily:"'Playfair Display',serif",fontSize:"18px",fontWeight:700,color:previewPrimary}}>14 de Outubro</span>
+                <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
+                  <span style={{fontSize:"11px",background:previewSecondary+"33",color:previewSecondary,borderRadius:"10px",padding:"2px 9px"}}>#gratidão</span>
+                  <span style={{fontSize:"11px",color:t.muted}}>{draftDark?"🌙 Modo Escuro":"☀️ Modo Claro"} Ativo</span>
+                </div>
+              </div>
+              <p style={{fontFamily:"'Lora',serif",fontSize:"14px",color:t.text,lineHeight:1.6,fontStyle:"italic",marginBottom:"10px"}}>"A paz de um momento quieto com meus pensamentos e orações enche meu coração de gratidão."</p>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{display:"flex",gap:"6px"}}>
+                  <span style={{fontSize:"10.5px",color:t.muted,background:t.chip,borderRadius:"8px",padding:"2px 8px"}}>#devocional</span>
+                  <span style={{fontSize:"10.5px",color:t.muted,background:t.chip,borderRadius:"8px",padding:"2px 8px"}}>#reflexao</span>
+                </div>
+                <button style={{background:previewPrimary,color:"white",border:"none",borderRadius:"10px",padding:"6px 14px",fontSize:"12px",fontFamily:"'Roboto',sans-serif"}}>Salvar</button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{padding:"14px 22px",borderTop:`1px solid ${t.border}`,display:"flex",flexDirection:"column",gap:"10px"}}>
+            <button onClick={restoreDefault} style={{background:"none",border:"none",color:t.muted,fontSize:"13px",cursor:"pointer",textAlign:"left"}}>Restaurar Padrão</button>
+            <div style={{display:"flex",gap:"10px"}}>
+              <button onClick={()=>sView("main")} style={{flex:1,padding:"13px",borderRadius:"14px",border:`1px solid ${t.border}`,background:t.surface,color:t.text,fontSize:"14px",cursor:"pointer",fontFamily:"'Roboto',sans-serif"}}>Cancelar</button>
+              <button onClick={save} style={{flex:1,padding:"13px",borderRadius:"14px",border:"none",background:previewPrimary,color:"white",fontSize:"14px",fontWeight:600,cursor:"pointer",fontFamily:"'Roboto',sans-serif"}}>Salvar Preferências</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return(
+    <div style={sheetStyle} onClick={onClose}>
+      <div style={cardStyle} onClick={e=>e.stopPropagation()}>
+        <div style={{padding:"10px 0 0",display:"flex",justifyContent:"center"}}>
+          <div style={{width:"40px",height:"4px",borderRadius:"2px",background:t.border}}/>
+        </div>
+        <div style={{padding:"18px 22px 6px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:t.text}}>⚙️ Ajustes & Configurações</h2>
+            <p style={{fontSize:"13px",color:t.muted,marginTop:"3px"}}>Personalização, dados e segurança da conta</p>
+          </div>
+          <button onClick={onClose} style={{background:t.chip,border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"15px",cursor:"pointer",color:t.muted,flexShrink:0}}>✕</button>
+        </div>
+
+        <div style={{padding:"14px 22px 6px"}}>
+          <p style={{fontSize:"11px",fontWeight:700,color:t.muted,letterSpacing:"1px",marginBottom:"10px"}}>🎨 APARÊNCIA & TEMA</p>
+          <div style={{display:"flex",gap:"8px",marginBottom:"10px"}}>
+            <button onClick={()=>{sDD(false);applyDark(false);refreshTheme();}} style={{flex:1,padding:"13px",borderRadius:"14px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Roboto',sans-serif",fontWeight:600,background:!DARK_MODE?TERRACOTTA:t.surface,color:!DARK_MODE?"white":t.muted}}>☀️ Modo Claro</button>
+            <button onClick={()=>{sDD(true);applyDark(true);refreshTheme();}} style={{flex:1,padding:"13px",borderRadius:"14px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Roboto',sans-serif",fontWeight:600,background:DARK_MODE?TERRACOTTA:t.surface,color:DARK_MODE?"white":t.muted}}>🌙 Modo Escuro</button>
+          </div>
+          <button onClick={()=>sView("colors")} style={{width:"100%",display:"flex",alignItems:"center",gap:"14px",textAlign:"left",padding:"14px",borderRadius:"16px",border:"none",background:t.surface,cursor:"pointer",marginBottom:"20px"}}>
+            <div style={{width:"38px",height:"38px",borderRadius:"10px",background:TERRACOTTA+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"}}>🎨</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:"14.5px",color:t.text,fontWeight:600}}>Personalizar Cores e Tema</p>
+              <p style={{fontSize:"12px",color:t.muted,marginTop:"1px"}}>Ajustar tons primários, secundários e paleta</p>
+            </div>
+            <span style={{color:t.muted}}>›</span>
+          </button>
+
+          <p style={{fontSize:"11px",fontWeight:700,color:t.muted,letterSpacing:"1px",marginBottom:"10px"}}>📁 DADOS & EXPORTAÇÃO</p>
+          <button onClick={()=>{onClose();showPdf();}} style={{width:"100%",display:"flex",alignItems:"center",gap:"14px",textAlign:"left",padding:"14px",borderRadius:"16px",border:"none",background:t.surface,cursor:"pointer",marginBottom:"10px"}}>
+            <div style={{width:"38px",height:"38px",borderRadius:"10px",background:"#F4C0B622",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"}}>📄</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:"14.5px",color:t.text,fontWeight:600}}>Exportar em PDF</p>
+              <p style={{fontSize:"12px",color:t.muted,marginTop:"1px"}}>Gerar documento para impressão das memórias</p>
+            </div>
+            <span style={{color:t.muted}}>›</span>
+          </button>
+          <button onClick={()=>{onClose();showBackup();}} style={{width:"100%",display:"flex",alignItems:"center",gap:"14px",textAlign:"left",padding:"14px",borderRadius:"16px",border:"none",background:t.surface,cursor:"pointer",marginBottom:"20px"}}>
+            <div style={{width:"38px",height:"38px",borderRadius:"10px",background:"#B5D4F422",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"}}>☁️</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:"14.5px",color:t.text,fontWeight:600}}>Backup & Restauração JSON</p>
+              <p style={{fontSize:"12px",color:t.muted,marginTop:"1px"}}>Salvar ou importar arquivo completo de dados</p>
+            </div>
+            <span style={{color:t.muted}}>›</span>
+          </button>
+
+          <p style={{fontSize:"11px",fontWeight:700,color:t.muted,letterSpacing:"1px",marginBottom:"10px"}}>👤 CONTA</p>
+          <button onClick={()=>{onClose();logout();}} style={{width:"100%",display:"flex",alignItems:"center",gap:"14px",textAlign:"left",padding:"14px",borderRadius:"16px",border:"none",background:t.surface,cursor:"pointer",marginBottom:"24px"}}>
+            <div style={{width:"38px",height:"38px",borderRadius:"10px",background:"rgba(192,96,96,0.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"17px"}}>🚪</div>
+            <div style={{flex:1}}>
+              <p style={{fontSize:"14.5px",color:"#C06060",fontWeight:600}}>Sair da conta</p>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── NAVEGAÇÃO INFERIOR (mobile) ───────────────────────────── */
 const NAV_ITEMS=[
   {k:"diary",icon:"📖",label:"Diário",color:TERRACOTTA},
@@ -1845,14 +2056,15 @@ const NAV_ITEMS=[
   {k:"livros",icon:"📚",label:"Leituras",color:SAGE}
 ];
 function BottomNav({section,setSection}){
+  const t=TH();
   return(
-    <div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:20,display:"flex",justifyContent:"space-around",alignItems:"center",background:"white",borderTop:"1px solid #EDE5DC",padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",boxShadow:"0 -2px 10px rgba(0,0,0,0.06)"}}>
+    <div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:20,display:"flex",justifyContent:"space-around",alignItems:"center",background:t.surface,borderTop:`1px solid ${t.border}`,padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",boxShadow:"0 -2px 10px rgba(0,0,0,0.06)"}}>
       {NAV_ITEMS.map(({k,icon,label,color})=>{
         const active=section===k;
         return(
           <button key={k} onClick={()=>setSection(k)} style={{background:active?color+"22":"transparent",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:"3px",padding:"6px 14px",borderRadius:"18px",transition:"background .15s"}}>
             <span style={{fontSize:"20px"}}>{icon}</span>
-            <span style={{fontSize:"11.5px",fontFamily:"'Roboto',sans-serif",fontWeight:active?700:400,color:active?color:"#a89a8a"}}>{label}</span>
+            <span style={{fontSize:"11.5px",fontFamily:"'Roboto',sans-serif",fontWeight:active?700:400,color:active?color:t.faint}}>{label}</span>
           </button>
         );
       })}
@@ -1861,7 +2073,7 @@ function BottomNav({section,setSection}){
 }
 
 /* ── SIDEBAR ────────────────────────────────────────────────── */
-function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,showBackup,mob,onEntryClick,section,setSection}){
+function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,showBackup,openSettings,mob,onEntryClick,section,setSection}){
   const[tab,st]=useState("timeline");
   const diaryEntries=entries.filter(e=>!e.type||e.type==="diary");
   const tags=[...new Set(diaryEntries.flatMap(e=>e.tags||[]))];
@@ -1884,20 +2096,18 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
   );
 
   const header=(
-    <div style={{padding:mob?"18px 18px 12px":"22px 20px 16px",borderBottom:"1px solid #EDE5DC",flexShrink:0}}>
+    <div style={{padding:mob?"18px 18px 12px":"22px 20px 16px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",alignItems:"center",gap:"10px"}}>
           <img src={LOGO_DATA_URI} alt="" style={{width:mob?"36px":"32px",height:mob?"36px":"32px",borderRadius:"50%",boxShadow:"0 1px 4px rgba(0,0,0,0.12)"}}/>
           <div>
-            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:mob?"22px":"20px",color:"#1a1410",letterSpacing:"-0.3px"}}>Meu Diário</h1>
+            <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:mob?"22px":"20px",color:TH().text,letterSpacing:"-0.3px"}}>Meu Diário</h1>
             <p style={{fontSize:"11px",color:"#c5b8a8",marginTop:"2px",fontStyle:"italic"}}>{emailName(user?.email)}</p>
           </div>
         </div>
         {mob?(
           <div style={{display:"flex",gap:"6px"}}>
-            <button onClick={showPdf} title="PDF" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"15px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>📄</button>
-            <button onClick={showBackup} title="Backup" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"15px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>💾</button>
-            <button onClick={logout} title="Sair" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"15px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>🚪</button>
+            <button onClick={openSettings} title="Ajustes" style={{background:TH().chip,border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"16px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>⚙️</button>
           </div>
         ):(
           <div style={{display:"flex",gap:"8px"}}>
@@ -1952,7 +2162,7 @@ function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,o
 
   if(mob){
     return(
-      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"white",position:"relative",paddingBottom:"70px"}}>
+      <div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,position:"relative",paddingBottom:"70px"}}>
         {header}
         <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
           {section==="diary"&&(tab==="calendar"?<>{calSection}{tagSection}{timeline}</>:<>{tagSection}{timeline}</>)}
@@ -2016,6 +2226,9 @@ function App(){
   const[isFrase,sIF]=useState(false);
   const[devoEdit,sDE]=useState(null); // entry being edited in DevoEditor
   const[showDevoEd,sSDE]=useState(false);
+  const[settingsOpen,sSet]=useState(false);
+  const[themeTick,setThemeTick]=useState(0);
+  const refreshTheme=()=>setThemeTick(t=>t+1);
   const vRef=useRef(null);
 
   useEffect(()=>{
@@ -2141,79 +2354,73 @@ function App(){
       date={selDate} sd={ssd} onSave={saveEntry} onCancel={()=>setSCR("diary")} mob={mob} saving={saving} isFrase={isFrase}/>
   );
 
-  const sbProps={entries,livros,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),showBackup:()=>sbkp(true),section,setSection:setSec};
+  const sbProps={entries,livros,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),showBackup:()=>sbkp(true),openSettings:()=>sSet(true),section,setSection:setSec};
 
   /* Mobile: viewer frase */
   if(mob&&mobEnt&&selEntry&&selEntry.type==="frase")return(
     <><div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
       <FraseViewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry,new Date(selEntry.date),true)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 
   /* Mobile: viewer diário */
   if(mob&&mobEnt&&selEntry)return(
     <><div style={{height:"100vh",overflow:"hidden",display:"flex",flexDirection:"column"}}>
       <Viewer entry={selEntry} viewRef={vRef} onEdit={()=>openEd(selEntry)} onDel={()=>del(selEntry.id)} onPng={png} onBack={()=>sme(false)} mob={true} saving={saving}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 
   /* Mobile: devo */
   if(mob&&section==="devo")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
-      <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#1a1410"}}>✝️ Devocional</h1>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px"}}>
+      <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:TH().text}}>✝️ Devocional</h1>
         <div style={{display:"flex",gap:"6px"}}>
-          <button onClick={()=>spdf(true)} title="PDF" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>📄</button>
-          <button onClick={()=>sbkp(true)} title="Backup" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>💾</button>
-          <button onClick={logout} title="Sair" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>🚪</button>
+          <button onClick={()=>sSet(true)} title="Ajustes" style={{background:TH().chip,border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"16px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>⚙️</button>
         </div>
       </div>
       <div style={{flex:1,overflow:"hidden"}}>
         <DevoSection entries={entries} user={user} onSave={saveDevo} onDel={del} openEditor={e=>{sDE(e||null);sSDE(true);}} mob={true}/>
       </div>
       <BottomNav section={section} setSection={setSec}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 
   /* Mobile: livros */
   if(mob&&section==="livros")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
-      <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:"#1a1410"}}>📚 Leituras</h1>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px"}}>
+      <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"22px",color:TH().text}}>📚 Leituras</h1>
         <div style={{display:"flex",gap:"6px"}}>
-          <button onClick={()=>spdf(true)} title="PDF" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>📄</button>
-          <button onClick={()=>sbkp(true)} title="Backup" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>💾</button>
-          <button onClick={logout} title="Sair" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>🚪</button>
+          <button onClick={()=>sSet(true)} title="Ajustes" style={{background:TH().chip,border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"16px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>⚙️</button>
         </div>
       </div>
       <div style={{flex:1,overflow:"hidden"}}>
         <LivrosSection livros={livros} onSave={saveLivro} onDel={delLivro} mob={true}/>
       </div>
       <BottomNav section={section} setSection={setSec}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 
   /* Mobile: frases grid */
   if(mob&&section==="frases")return(
-    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE",paddingBottom:"70px"}}>
-      <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:"#1a1410"}}>🌸 Frases</h1>
+    <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:TH().bg,paddingBottom:"70px"}}>
+      <div style={{padding:"16px 18px 12px",borderBottom:`1px solid ${TH().border}`,background:TH().surface,flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"20px",color:TH().text}}>🌸 Frases</h1>
         <div style={{display:"flex",gap:"6px"}}>
-          <button onClick={()=>spdf(true)} title="PDF" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>📄</button>
-          <button onClick={()=>sbkp(true)} title="Backup" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>💾</button>
-          <button onClick={logout} title="Sair" style={{background:"#F5EDE0",border:"none",borderRadius:"50%",width:"34px",height:"34px",fontSize:"14px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>🚪</button>
+          <button onClick={()=>sSet(true)} title="Ajustes" style={{background:TH().chip,border:"none",borderRadius:"50%",width:"36px",height:"36px",fontSize:"16px",cursor:"pointer",boxShadow:"0 1px 3px rgba(0,0,0,0.10)"}}>⚙️</button>
         </div>
       </div>
       <div style={{flex:1,overflow:"hidden"}}>
         <FrasesSection entries={entries} user={user} onSave={saveFrase} onDel={del} openFullEditor={e=>{sse(e);openEd(e,new Date(e.date),true);}} mob={true}/>
       </div>
       <BottomNav section={section} setSection={setSec}/>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 
   /* Mobile: diário */
   if(mob)return(
-    <><Sidebar {...sbProps} mob={true} onEntryClick={e=>{sse(e);sme(true);}}/>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    <><Sidebar {...sbProps} mob={true} onEntryClick={e=>{sse(e);sme(true);}}/>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 
   /* Desktop */
@@ -2240,7 +2447,7 @@ function App(){
           </div>
         )}
       </main>
-    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}</>
+    </div>{pdfOpen&&<PdfModal entries={entries} onClose={()=>spdf(false)}/>}{backupOpen&&<BackupModal entries={entries} livros={livros} user={user} onImport={reloadEntries} onClose={()=>sbkp(false)}/>}{settingsOpen&&<SettingsModal onClose={()=>sSet(false)} showPdf={()=>spdf(true)} showBackup={()=>sbkp(true)} logout={logout} refreshTheme={refreshTheme}/>}</>
   );
 }
 
