@@ -509,8 +509,8 @@ function EntryCard({entry,active,onClick}){
   const{dn,ms,yr}=pdi(entry.date);const dk=dark(entry.bg||"#FAF7F0");
   const tc=dk?"rgba(255,255,255,0.88)":"#1a1410";const d=dk?"rgba(255,255,255,0.35)":"#a89888";
   return(
-    <div onClick={onClick} style={{background:entry.bg||"#FAF7F0",borderRadius:"14px",padding:"13px 13px 11px",cursor:"pointer",marginBottom:"8px",border:`2px solid ${active?TERRACOTTA:"transparent"}`,transition:"border-color .15s,transform .1s"}}
-      onMouseEnter={e=>{if(!active)e.currentTarget.style.transform="translateY(-1px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="";}}>
+    <div onClick={onClick} style={{background:entry.bg||"#FAF7F0",borderRadius:"14px",padding:"13px 13px 11px",cursor:"pointer",marginBottom:"8px",border:`2px solid ${active?TERRACOTTA:"transparent"}`,boxShadow:active?"0 2px 8px rgba(0,0,0,0.10)":"0 1px 3px rgba(0,0,0,0.06)",transition:"border-color .15s,transform .1s,box-shadow .15s"}}
+      onMouseEnter={e=>{if(!active){e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 3px 10px rgba(0,0,0,0.12)";}}} onMouseLeave={e=>{e.currentTarget.style.transform="";if(!active)e.currentTarget.style.boxShadow="0 1px 3px rgba(0,0,0,0.06)";}}>
       <p style={{fontFamily:entry.font||"'Lora',serif",fontSize:"12px",color:tc,marginBottom:"8px",lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:3,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{entry.content}</p>
       {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:"4px",flexWrap:"wrap",marginBottom:"8px"}}>{entry.tags.slice(0,3).map(t=><span key={t} style={{fontSize:"10px",color:d,background:dk?"rgba(255,255,255,0.1)":"rgba(0,0,0,0.06)",borderRadius:"4px",padding:"1px 5px"}}>#{t}</span>)}</div>}
       <div style={{display:"flex",justifyContent:"flex-end",alignItems:"baseline",gap:"4px"}}>
@@ -903,12 +903,12 @@ function PdfModal({entries,onClose}){
   const[allDates,sad]=useState(true);
   const[typeFilter,stf]=useState("both");
   const[busy,sbz]=useState(false);const[prog,sp]=useState(0);
-  const inp2={padding:"9px 12px",border:"1.5px solid #EAE0D8",borderRadius:"10px",fontSize:"13px",fontFamily:"'Lora',serif",color:"#1a1410",background:"#FDFAF7",outline:"none",width:"100%"};
+  const inp2={padding:"9px 12px",border:"1.5px solid #EAE0D8",borderRadius:"14px",fontSize:"13px",fontFamily:"'Lora',serif",color:"#1a1410",background:"#FDFAF7",outline:"none",width:"100%"};
   const diaryCount=sorted.filter(e=>!e.type||e.type==="diary").length;
   const fraseCount=sorted.filter(e=>e.type==="frase").length;
   const devoCount=sorted.filter(e=>e.type==="devo").length;
   const typeBtn=(val,label,count)=>(
-    <button onClick={()=>stf(val)} style={{flex:1,padding:"10px 4px",borderRadius:"10px",border:`2px solid ${typeFilter===val?TERRACOTTA:"#EAE0D8"}`,background:typeFilter===val?"#FFF5F0":"white",cursor:"pointer",fontFamily:"'Lora',serif",fontSize:"11px",color:typeFilter===val?TERRACOTTA:"#6a5a4a",fontWeight:typeFilter===val?700:400,transition:"all .15s",textAlign:"center"}}>
+    <button onClick={()=>stf(val)} style={{flex:1,padding:"10px 4px",borderRadius:"14px",border:`2px solid ${typeFilter===val?TERRACOTTA:"#EAE0D8"}`,background:typeFilter===val?"#FFF5F0":"white",cursor:"pointer",fontFamily:"'Lora',serif",fontSize:"11px",color:typeFilter===val?TERRACOTTA:"#6a5a4a",fontWeight:typeFilter===val?700:400,transition:"all .15s",textAlign:"center"}}>
       {label}<br/><span style={{fontSize:"10px",opacity:0.65}}>{count} entr.</span>
     </button>
   );
@@ -1058,7 +1058,7 @@ function DevoViewer({entry,viewRef,onEdit,onDel,onBack,mob,saving}){
     <div style={{background:bg,color,fontSize:"10px",fontWeight:700,textTransform:"uppercase",letterSpacing:"1.2px",padding:"4px 14px",borderRadius:"20px",display:"inline-block",marginBottom:"8px",fontFamily:"'DM Sans',sans-serif"}}>{txt}</div>
   );
   const Box=({border,children,minH=80})=>(
-    <div style={{border:`2px solid ${border}`,borderRadius:"10px",padding:"12px",minHeight:`${minH}px`,display:"flex",flexDirection:"column",gap:"8px"}}>{children}</div>
+    <div style={{border:`2px solid ${border}`,borderRadius:"14px",padding:"12px",minHeight:`${minH}px`,display:"flex",flexDirection:"column",gap:"8px"}}>{children}</div>
   );
   const TextField=({value})=>value?(
     <p style={{fontFamily:"'Lora',serif",fontSize:"14px",color:tc,lineHeight:1.75,margin:0,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{value}</p>
@@ -1166,7 +1166,7 @@ function DevoEditor({entry,user,onSave,onCancel,mob}){
   const Label=({txt,bg,color})=>(
     <div style={{background:bg,color,fontSize:"9px",fontWeight:700,textTransform:"uppercase",letterSpacing:"1.2px",padding:"4px 12px",borderRadius:"20px",display:"inline-block",marginBottom:"6px",fontFamily:"'DM Sans',sans-serif"}}>{txt}</div>
   );
-  const boxStyle=(border)=>({border:`2px solid ${border}`,borderRadius:"10px",padding:"10px",display:"flex",flexDirection:"column",gap:"8px"});
+  const boxStyle=(border)=>({border:`2px solid ${border}`,borderRadius:"14px",padding:"10px",display:"flex",flexDirection:"column",gap:"8px"});
   const taStyle={background:"transparent",border:"none",outline:"none",resize:"none",fontFamily:"'Lora',serif",fontSize:"13px",color:tc,lineHeight:1.7,width:"100%",minHeight:"80px"};
   const inpStyle={background:"transparent",border:"none",outline:"none",fontFamily:"'Lora',serif",fontSize:"13px",color:tc,width:"100%"};
   const liStyle=(bg)=>({background:bg,borderRadius:"8px",padding:"6px 10px"});
@@ -1276,7 +1276,7 @@ function DevoSection({entries,user,onSave,onDel,openEditor,mob}){
             <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:"17px",color:"#1a1410"}}>✝️ Devocional</h2>
             <p style={{fontSize:"11px",color:"#c5b8a8",fontStyle:"italic",marginTop:"2px"}}>{devos.length} {devos.length===1?"registro":"registros"}</p>
           </div>
-          <button onClick={()=>openEditor(null)} style={{background:AMBER,color:"white",border:"none",borderRadius:"10px",padding:"7px 13px",fontSize:"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Novo</button>
+          <button onClick={()=>openEditor(null)} style={{background:AMBER,color:"white",border:"none",borderRadius:"20px",padding:"9px 16px",fontSize:"12px",cursor:"pointer",fontFamily:"'Roboto',sans-serif",fontWeight:500,boxShadow:"0 2px 6px rgba(212,168,67,0.4)"}}>+ Novo</button>
         </div>
         <div style={{flex:1,overflowY:"auto",padding:"10px 12px"}}>
           {devos.length===0?(
@@ -1374,7 +1374,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
   const fileRef=useRef(null);
 
   const lbl={fontSize:"13px",color:"#8a7d70",fontWeight:600,marginBottom:"5px",display:"block"};
-  const inp={width:"100%",padding:"10px 12px",border:"1px solid #EDE5DC",borderRadius:"10px",fontSize:"16px",fontFamily:"'Lora',serif",background:"#FAF7F0",marginBottom:"14px"};
+  const inp={width:"100%",padding:"10px 12px",border:"1px solid #EDE5DC",borderRadius:"14px",fontSize:"16px",fontFamily:"'Lora',serif",background:"#FAF7F0",marginBottom:"14px"};
 
   const addCategory=()=>{
     const v=newCat.trim();
@@ -1417,10 +1417,10 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:"6px"}}>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleCoverFile} style={{display:"none"}}/>
-          <button onClick={()=>fileRef.current?.click()} disabled={coverBusy} style={{padding:"8px 14px",background:"#F5EDE0",border:"none",borderRadius:"10px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>
+          <button onClick={()=>fileRef.current?.click()} disabled={coverBusy} style={{padding:"8px 14px",background:"#F5EDE0",border:"none",borderRadius:"14px",fontSize:"14px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#6a5a4a"}}>
             {coverBusy?"Processando…":cover?"Trocar foto":"Adicionar foto"}
           </button>
-          {cover&&<button onClick={()=>sCover("")} style={{padding:"6px 14px",background:"none",border:"none",borderRadius:"10px",fontSize:"13px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Remover foto</button>}
+          {cover&&<button onClick={()=>sCover("")} style={{padding:"6px 14px",background:"none",border:"none",borderRadius:"14px",fontSize:"13px",cursor:"pointer",fontFamily:"'Lora',serif",color:"#C06060"}}>Remover foto</button>}
         </div>
       </div>
 
@@ -1448,7 +1448,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
           ):(
             <div style={{display:"flex",gap:"6px",marginBottom:"14px"}}>
               <input autoFocus style={{...inp,marginBottom:0}} value={newCat} onChange={e=>sNC(e.target.value)} placeholder="Nome da categoria" onKeyDown={e=>e.key==="Enter"&&addCategory()}/>
-              <button onClick={addCategory} style={{padding:"0 14px",background:SAGE,border:"none",borderRadius:"10px",color:"white",fontSize:"15px",cursor:"pointer"}}>OK</button>
+              <button onClick={addCategory} style={{padding:"0 14px",background:SAGE,border:"none",borderRadius:"14px",color:"white",fontSize:"15px",cursor:"pointer"}}>OK</button>
             </div>
           )}
         </div>
@@ -1456,7 +1456,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
           <label style={lbl}>Formato</label>
           <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
             {[{k:"fisico",label:"📘 Físico"},{k:"audiolivro",label:"🎧 Áudio"}].map(f=>(
-              <button key={f.k} onClick={()=>sF(f.k)} style={{flex:1,padding:"10px 6px",borderRadius:"10px",border:"1px solid #EDE5DC",cursor:"pointer",fontSize:"15px",fontFamily:"'Lora',serif",background:format===f.k?TERRACOTTA:"#FAF7F0",color:format===f.k?"white":"#6a5a4a"}}>{f.label}</button>
+              <button key={f.k} onClick={()=>sF(f.k)} style={{flex:1,padding:"10px 6px",borderRadius:"14px",border:"1px solid #EDE5DC",cursor:"pointer",fontSize:"15px",fontFamily:"'Lora',serif",background:format===f.k?TERRACOTTA:"#FAF7F0",color:format===f.k?"white":"#6a5a4a"}}>{f.label}</button>
             ))}
           </div>
         </div>
@@ -1465,7 +1465,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       <label style={lbl}>Status</label>
       <div style={{display:"flex",gap:"8px",marginBottom:"14px"}}>
         {LIVRO_STATUS.map(s=>(
-          <button key={s.k} onClick={()=>sS(s.k)} style={{flex:1,padding:"9px 6px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Lora',serif",fontWeight:status===s.k?700:400,background:status===s.k?s.color:"#F5EDE0",color:status===s.k?"white":"#8a7d70"}}>{s.label}</button>
+          <button key={s.k} onClick={()=>sS(s.k)} style={{flex:1,padding:"9px 6px",borderRadius:"14px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Lora',serif",fontWeight:status===s.k?700:400,background:status===s.k?s.color:"#F5EDE0",color:status===s.k?"white":"#8a7d70"}}>{s.label}</button>
         ))}
       </div>
 
@@ -1500,7 +1500,7 @@ function LivroForm({livro,onSave,onCancel,onDelete}){
       <label style={lbl}>Como essa leitura te fez sentir</label>
       <div style={{display:"flex",gap:"6px",marginBottom:"14px",flexWrap:"wrap"}}>
         {LIVRO_MOODS.map(m=>(
-          <button key={m.k} onClick={()=>sMood(mood===m.k?"":m.k)} style={{padding:"7px 11px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Lora',serif",background:mood===m.k?m.color:"#F5EDE0",color:"#5a4d40"}}>{m.emoji} {m.label}</button>
+          <button key={m.k} onClick={()=>sMood(mood===m.k?"":m.k)} style={{padding:"7px 11px",borderRadius:"14px",border:"none",cursor:"pointer",fontSize:"14px",fontFamily:"'Lora',serif",background:mood===m.k?m.color:"#F5EDE0",color:"#5a4d40"}}>{m.emoji} {m.label}</button>
         ))}
       </div>
 
@@ -1526,7 +1526,7 @@ function LivroShelf({livros,onClick,sel}){
   );
   return(
     <div style={{padding:"6px 4px"}}>
-      <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-end",gap:"5px",background:"#F5EDE0",borderRadius:"10px",padding:"16px 10px 0"}}>
+      <div style={{display:"flex",flexWrap:"wrap",alignItems:"flex-end",gap:"5px",background:"#F5EDE0",borderRadius:"14px",padding:"16px 10px 0"}}>
         {livros.map(l=>{
           const h=90+((l.title.length*7)%45);
           const w=22+((l.author.length*3)%14);
@@ -1570,7 +1570,7 @@ function LivroMoodMap({livros}){
         {lidos.map(l=>{
           const m=LIVRO_MOODS.find(x=>x.k===l.mood);
           return(
-            <div key={l.id} title={l.title} style={{width:"38px",height:"38px",borderRadius:"10px",background:m?m.color:"#EDE5DC",
+            <div key={l.id} title={l.title} style={{width:"38px",height:"38px",borderRadius:"14px",background:m?m.color:"#EDE5DC",
               display:"flex",alignItems:"center",justifyContent:"center",fontSize:"18px",cursor:"default"}}>
               {m?m.emoji:"·"}
             </div>
@@ -1825,7 +1825,7 @@ function LivrosSection({livros,onSave,onDel,mob}){
 }
 
 /* ── SIDEBAR ────────────────────────────────────────────────── */
-function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,showBackup,mob,onEntryClick,section,setSection}){
+function Sidebar({entries,livros,user,selDate,setSel,stag,sstag,selEntry,setSE,open,logout,showPdf,showBackup,mob,onEntryClick,section,setSection}){
   const[tab,st]=useState("timeline");
   const diaryEntries=entries.filter(e=>!e.type||e.type==="diary");
   const tags=[...new Set(diaryEntries.flatMap(e=>e.tags||[]))];
@@ -1834,14 +1834,16 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
   const ch=active=>({fontSize:"11px",padding:"4px 9px",borderRadius:"8px",cursor:"pointer",userSelect:"none",background:active?TERRACOTTA:"#F5EDE0",color:active?"white":"#8a7d70"});
 
   /* tabs de seção */
+  const navCounts={diary:entries.filter(e=>e.type==="diary").length,frases:entries.filter(e=>e.type==="frase").length,devo:entries.filter(e=>e.type==="devo").length,livros:(livros||[]).length};
   const SecTabs=()=>(
     <div style={{display:"flex",gap:"6px",marginBottom:mob?"12px":"0",marginTop:mob?"12px":"0"}}>
       {[{k:"diary",icon:"📖",label:"Diário"},{k:"frases",icon:"🌸",label:"Frases"},{k:"devo",icon:"✝️",label:"Devo"},{k:"livros",icon:"📚",label:"Livros"}].map(({k,icon,label})=>(
         <button key={k} onClick={()=>setSection(k)}
-          style={{flex:1,padding:"7px 0",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"11px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,
+          style={{position:"relative",flex:1,padding:"7px 0",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"11px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,
             background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",
-            color:section===k?"white":"#8a7d70",transition:"all .15s"}}>
+            color:section===k?"white":"#8a7d70",boxShadow:section===k?"0 2px 6px rgba(0,0,0,0.18)":"none",transition:"all .15s"}}>
           {icon} {label}
+          {navCounts[k]>0&&<span style={{position:"absolute",top:"-4px",right:"6px",background:section===k?"white":TERRACOTTA,color:section===k?(k==="frases"?"#8B5FBF":k==="devo"?AMBER:k==="livros"?SAGE:TERRACOTTA):"white",fontSize:"9px",fontWeight:700,borderRadius:"9px",minWidth:"16px",height:"16px",display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",boxShadow:"0 1px 2px rgba(0,0,0,0.2)"}}>{navCounts[k]}</span>}
         </button>
       ))}
     </div>
@@ -1858,7 +1860,7 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
           </div>
         </div>
         <div style={{display:"flex",gap:"8px"}}>
-          {mob&&<button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"10px",padding:"8px 11px",fontSize:"12px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>PDF</button>}
+          {mob&&<button onClick={showPdf} style={{background:"#F5EDE0",border:"none",borderRadius:"14px",padding:"8px 11px",fontSize:"12px",cursor:"pointer",color:"#6a5a4a",fontFamily:"'Lora',serif"}}>PDF</button>}
           <button onClick={()=>open(null,new Date())} style={{background:TERRACOTTA,color:"white",border:"none",borderRadius:"11px",padding:mob?"9px 14px":"8px 14px",fontSize:mob?"13px":"12px",cursor:"pointer",fontFamily:"'Playfair Display',serif"}}>+ Nova</button>
         </div>
       </div>
@@ -1866,7 +1868,7 @@ function Sidebar({entries,user,selDate,setSel,stag,sstag,selEntry,setSE,open,log
       {mob&&section==="diary"&&(
         <div style={{display:"flex",gap:"8px",marginTop:"4px"}}>
           {["timeline","calendar"].map(t=>(
-            <button key={t} onClick={()=>st(t)} style={{padding:"6px 14px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",fontWeight:tab===t?600:400,background:tab===t?TERRACOTTA:"#F5EDE0",color:tab===t?"white":"#8a7d70",transition:"all .15s"}}>
+            <button key={t} onClick={()=>st(t)} style={{padding:"6px 14px",borderRadius:"14px",border:"none",cursor:"pointer",fontSize:"12px",fontFamily:"'Lora',serif",fontWeight:tab===t?600:400,background:tab===t?TERRACOTTA:"#F5EDE0",color:tab===t?"white":"#8a7d70",transition:"all .15s"}}>
               {t==="timeline"?"Linha do tempo":"Calendário"}
             </button>
           ))}
@@ -2101,7 +2103,7 @@ function App(){
       date={selDate} sd={ssd} onSave={saveEntry} onCancel={()=>setSCR("diary")} mob={mob} saving={saving} isFrase={isFrase}/>
   );
 
-  const sbProps={entries,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),showBackup:()=>sbkp(true),section,setSection:setSec};
+  const sbProps={entries,livros,user,selDate,setSel:ssd,stag,sstag:sst,selEntry,setSE:sse,open:openEd,logout,showPdf:()=>spdf(true),showBackup:()=>sbkp(true),section,setSection:setSec};
 
   /* Mobile: viewer frase */
   if(mob&&mobEnt&&selEntry&&selEntry.type==="frase")return(
@@ -2122,9 +2124,14 @@ function App(){
     <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
       <div style={{padding:"14px 18px 10px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",gap:"6px"}}>
-          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>(
-            <button key={k} onClick={()=>setSec(k)} style={{padding:"6px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>{icon}</button>
-          ))}
+          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>{
+            const cnt=k==="diary"?entries.filter(e=>e.type==="diary").length:k==="frases"?entries.filter(e=>e.type==="frase").length:k==="devo"?entries.filter(e=>e.type==="devo").length:livros.length;
+            return(
+            <button key={k} onClick={()=>setSec(k)} style={{position:"relative",padding:"6px 12px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70",boxShadow:section===k?"0 2px 6px rgba(0,0,0,0.18)":"none"}}>
+              {icon}
+              {cnt>0&&<span style={{position:"absolute",top:"-3px",right:"-2px",background:section===k?"white":TERRACOTTA,color:section===k?"#6a5a4a":"white",fontSize:"9px",fontWeight:700,borderRadius:"9px",minWidth:"15px",height:"15px",display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",boxShadow:"0 1px 2px rgba(0,0,0,0.2)"}}>{cnt}</span>}
+            </button>
+          );})}
         </div>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair</button>
       </div>
@@ -2143,9 +2150,14 @@ function App(){
     <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
       <div style={{padding:"14px 18px 10px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",gap:"6px"}}>
-          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>(
-            <button key={k} onClick={()=>setSec(k)} style={{padding:"6px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>{icon}</button>
-          ))}
+          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>{
+            const cnt=k==="diary"?entries.filter(e=>e.type==="diary").length:k==="frases"?entries.filter(e=>e.type==="frase").length:k==="devo"?entries.filter(e=>e.type==="devo").length:livros.length;
+            return(
+            <button key={k} onClick={()=>setSec(k)} style={{position:"relative",padding:"6px 12px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70",boxShadow:section===k?"0 2px 6px rgba(0,0,0,0.18)":"none"}}>
+              {icon}
+              {cnt>0&&<span style={{position:"absolute",top:"-3px",right:"-2px",background:section===k?"white":TERRACOTTA,color:section===k?"#6a5a4a":"white",fontSize:"9px",fontWeight:700,borderRadius:"9px",minWidth:"15px",height:"15px",display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",boxShadow:"0 1px 2px rgba(0,0,0,0.2)"}}>{cnt}</span>}
+            </button>
+          );})}
         </div>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair</button>
       </div>
@@ -2164,11 +2176,14 @@ function App(){
     <><div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F7F3EE"}}>
       <div style={{padding:"16px 18px 12px",borderBottom:"1px solid #EDE5DC",background:"white",flexShrink:0,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",gap:"8px"}}>
-          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>(
-            <button key={k} onClick={()=>setSec(k)} style={{padding:"7px 12px",borderRadius:"10px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70"}}>
+          {[{k:"diary",icon:"📖"},{k:"frases",icon:"🌸"},{k:"devo",icon:"✝️"},{k:"livros",icon:"📚"}].map(({k,icon})=>{
+            const cnt=k==="diary"?entries.filter(e=>e.type==="diary").length:k==="frases"?entries.filter(e=>e.type==="frase").length:k==="devo"?entries.filter(e=>e.type==="devo").length:livros.length;
+            return(
+            <button key={k} onClick={()=>setSec(k)} style={{position:"relative",padding:"7px 12px",borderRadius:"20px",border:"none",cursor:"pointer",fontSize:"13px",fontFamily:"'Lora',serif",fontWeight:section===k?700:400,background:section===k?(k==="frases"?"#EDD4FF":k==="devo"?"#F5E8C0":k==="livros"?SAGE:TERRACOTTA):"#F5EDE0",color:section===k?"white":"#8a7d70",boxShadow:section===k?"0 2px 6px rgba(0,0,0,0.18)":"none"}}>
               {icon}
+              {cnt>0&&<span style={{position:"absolute",top:"-3px",right:"-2px",background:section===k?"white":TERRACOTTA,color:section===k?"#6a5a4a":"white",fontSize:"9px",fontWeight:700,borderRadius:"9px",minWidth:"15px",height:"15px",display:"flex",alignItems:"center",justifyContent:"center",padding:"0 3px",boxShadow:"0 1px 2px rgba(0,0,0,0.2)"}}>{cnt}</span>}
             </button>
-          ))}
+          );})}
         </div>
         <button onClick={logout} style={{background:"none",border:"none",cursor:"pointer",fontSize:"11px",color:"#c5b8a8",fontFamily:"'Lora',serif"}}>Sair</button>
       </div>
